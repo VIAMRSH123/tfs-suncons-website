@@ -38,7 +38,7 @@ from reading the code. Nothing here is invented to fill the queue.
 is protected against regression, and there is no test runner installed at all. This is the highest
 value work available: it turns a one-off manual pass into something that holds.
 
-- [ ] **A1 — Install Playwright** and wire `test` / `test:e2e` scripts. Config should build and
+- [x] **A1 — Install Playwright** and wire `test` / `test:e2e` scripts. Config should build and
       serve the production bundle (`next build && next start`), since most of what needs asserting
       is prerendered output and real headers. Keep it to one dependency.
 - [ ] **A2 — Legacy redirect tests.** `next.config.ts` defines 13 permanent redirects from the old
@@ -132,3 +132,5 @@ must not fabricate an asset, a certificate, a social URL or a claim to close one
 
 Append one line per commit: `YYYY-MM-DD — <item> — <commit subject>`. The line goes in the same
 commit as the work, so the sha isn't known yet — leave it out.
+
+2026-10-19 — A1 — test: add Playwright e2e runner against the production build
