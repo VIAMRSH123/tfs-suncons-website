@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
+import { PageTransition } from "@/components/layout/PageTransition";
 import { Hero } from "@/components/sections/Hero";
-import { ProofStrip } from "@/components/sections/ProofStrip";
 import { CompanyIntro } from "@/components/sections/CompanyIntro";
-import { PortfolioGrid } from "@/components/sections/PortfolioGrid";
-import { RiceIndex } from "@/components/sections/RiceIndex";
 import { SpiceBand } from "@/components/sections/SpiceBand";
-import { SupplyJourney } from "@/components/sections/SupplyJourney";
+import { Journey } from "@/components/sections/Journey";
 import { QualitySection } from "@/components/sections/QualitySection";
-import { EnquirySection } from "@/components/sections/EnquirySection";
+import { LazyEnquirySection } from "@/components/lazy/enquiry";
+import {
+  LazyManifestBand,
+  LazyOrderPlanner,
+  LazyPackCloud,
+  LazyRiceIndex,
+} from "@/components/lazy/home";
 import { company } from "@/content/company";
 
 export const metadata: Metadata = {
@@ -39,20 +43,21 @@ const organizationSchema = {
 
 export default function HomePage() {
   return (
-    <>
+    <PageTransition>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
       />
       <Hero />
-      <ProofStrip />
+      <LazyManifestBand />
       <CompanyIntro />
-      <PortfolioGrid />
-      <RiceIndex />
+      <LazyPackCloud />
+      <LazyRiceIndex />
       <SpiceBand />
-      <SupplyJourney />
+      <Journey />
+      <LazyOrderPlanner />
       <QualitySection />
-      <EnquirySection />
-    </>
+      <LazyEnquirySection />
+    </PageTransition>
   );
 }

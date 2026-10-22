@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AddToEnquiry } from "@/components/enquiry/AddToEnquiry";
 import type { Product } from "@/content/products";
+import { TypeSpecimen } from "./TypeSpecimen";
 
 type ProductCardProps = {
   product: Product;
@@ -9,27 +11,24 @@ type ProductCardProps = {
 };
 
 /**
- * One card for every product grid on the site. Handles the case the old site
- * could not: a SKU with no pack photograph yet renders as a typographic card
- * rather than borrowing an unrelated stock image.
+ * One card for every product grid on the site. The link covers the pack and
+ * its name; "Add to enquiry" sits outside it, because a button inside a link
+ * is invalid and unusable by keyboard. A SKU with no photograph renders as a
+ * type specimen rather than borrowing an unrelated stock image.
  */
 export function ProductCard({ product, index, tone = "light" }: ProductCardProps) {
   const isDark = tone === "dark";
 
   return (
-    <article className="group">
+    <article className="group flex h-full flex-col">
       <Link
         href={`/products/${product.category}/${product.slug}`}
         data-cursor-label="VIEW PRODUCT"
-        className="flex h-full flex-col"
+        className="flex flex-1 flex-col"
       >
-        <div
-          className={`relative flex aspect-[4/5] items-center justify-center overflow-hidden p-8 ${
-            isDark ? "bg-forest-deep/40" : "border border-sand bg-paper"
-          }`}
-        >
+        <div className={`pack-stage relative aspect-[4/5] ${product.image ? "window-light p-8" : ""}`}>
           <span
-            className={`t-index t-meta absolute left-5 top-5 ${
+            className={`t-index t-meta absolute left-5 top-5 z-10 ${
               isDark ? "text-gold-soft" : "text-gold"
             }`}
           >
@@ -43,50 +42,35 @@ export function ProductCard({ product, index, tone = "light" }: ProductCardProps
               width={1000}
               height={1000}
               sizes="(max-width: 640px) 88vw, (max-width: 1024px) 45vw, 24vw"
-              className="h-full w-auto object-contain transition-transform duration-700 ease-[var(--ease-out-expo)] group-hover:scale-[1.06]"
+              className="pack h-full w-auto object-contain transition-transform duration-700 ease-[var(--ease-out-expo)] group-hover:scale-[1.05]"
             />
           ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center text-center">
-              <span
-                aria-hidden="true"
-                className={`t-index select-none text-[5rem] leading-none ${
-                  isDark ? "text-ivory/15" : "text-sand"
-                }`}
-              >
-                91
-              </span>
-              <span
-                className={`t-meta mt-4 ${isDark ? "text-ivory/45" : "text-muted"}`}
-              >
-                Pack photography to follow
-              </span>
-            </div>
+            <TypeSpecimen name={product.name} tone={tone} />
           )}
         </div>
 
         <div className="hairline mt-5 flex items-baseline justify-between gap-3 pt-4">
-          <h3
-            className={`t-title text-[1.4rem] ${isDark ? "text-ivory" : "text-forest"}`}
-          >
+          <h3 className={`t-title text-[1.4rem] ${isDark ? "text-ivory" : "text-forest"}`}>
             {product.name}
           </h3>
-          {product.packSizes.length > 0 ? (
-            <span
-              className={`t-meta shrink-0 ${isDark ? "text-gold-soft" : "text-gold"}`}
-            >
-              {product.packSizes.join(" · ")}
-            </span>
-          ) : null}
+          <span className={`t-meta shrink-0 ${isDark ? "text-gold-soft" : "text-gold"}`}>
+            {product.packSizes.length > 0 ? product.packSizes.join(" · ") : "Size on request"}
+          </span>
         </div>
 
-        <p
-          className={`mt-2.5 text-sm leading-relaxed ${
-            isDark ? "text-ivory/60" : "text-muted"
-          }`}
-        >
+        <p className={`mt-2.5 text-sm leading-relaxed ${isDark ? "text-ivory/60" : "text-muted"}`}>
           {product.summary}
         </p>
       </Link>
+
+      <div className="mt-5">
+        <AddToEnquiry
+          slug={product.slug}
+          name={product.name}
+          packSizes={product.packSizes}
+          tone={tone}
+        />
+      </div>
     </article>
   );
 }

@@ -1,0 +1,204 @@
+/* ─── Pinned stories ───────────────────────────────────────────────────────────
+   A tall section with a sticky, viewport-high panel. Heights are CSS, so the
+   page never jumps when scripts load. Phones, reduced motion and no-JS keep
+   the panel in normal flow — the <noscript> rule in the layout undoes the pin.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.story-pin__sticky {
+  position: relative;
+}
+
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .js-motion .story-pin--journey {
+    height: 340svh;
+  }
+
+  .js-motion .story-pin--journey > .story-pin__sticky,
+  .js-motion .rice-index > .story-pin__sticky {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    overflow: hidden;
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .js-motion .story-pin--cloud {
+    height: 230svh;
+  }
+
+  .js-motion .story-pin--cloud > .story-pin__sticky {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    overflow: hidden;
+  }
+}
+
+/* ─── Pack cloud ───────────────────────────────────────────────────────────── */
+
+.pack-cloud__label,
+.pack-cloud__specimen {
+  transition: opacity 600ms var(--ease-out-expo);
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .js-motion .pack-cloud [data-cloud-pack] {
+    will-change: translate, scale;
+  }
+
+  .js-motion .pack-cloud[data-settled="false"] .pack-cloud__label,
+  .js-motion .pack-cloud[data-settled="false"] .pack-cloud__specimen {
+    opacity: 0;
+  }
+
+  .js-motion .pack-cloud__column:focus-visible .pack-cloud__label {
+    opacity: 1;
+  }
+}
+
+/* ─── Rice index ───────────────────────────────────────────────────────────────
+   Phones: a swipeable row. Pinned desktop: heading column left, packs passing
+   right; the scroll distance is derived from the same variables that size the
+   track, so the section is exactly as tall as the run needs. */
+
+.rice-index {
+  --card-w: 78vw;
+  --gap: 1.25rem;
+  /* The swipeable track's width leaked into the page on phones and widened the
+     mobile layout viewport (fixed header measured 1280px at a 320px width).
+     `clip`, unlike `hidden`, makes no scroll container, so the sticky pin still works. */
+  overflow-x: clip;
+}
+
+.rice-index__panel {
+  padding-block: var(--space-section);
+}
+
+.rice-index__viewport {
+  margin-top: 3.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.rice-index__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.rice-index__track {
+  display: flex;
+  gap: var(--gap);
+  width: max-content;
+  padding-inline: var(--space-gutter);
+}
+
+.rice-index__card {
+  flex: 0 0 var(--card-w);
+  scroll-snap-align: start;
+}
+
+.rice-index__stage {
+  aspect-ratio: 4 / 5;
+}
+
+@media (min-width: 640px) {
+  .rice-index {
+    --card-w: 58vw;
+  }
+}
+
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .js-motion .rice-index {
+    --head-w: clamp(16rem, 27vw, 24rem);
+    --col-gap: clamp(2rem, 4vw, 4rem);
+    --card-w: min(22rem, calc((100svh - 15rem) * 0.8));
+    --rice-distance: max(
+      0px,
+      calc(
+        var(--cards) * var(--card-w) + (var(--cards) - 1) * var(--gap) + var(--space-gutter) -
+          (100vw - var(--space-gutter) - var(--head-w) - var(--col-gap))
+      )
+    );
+    height: calc(100svh + var(--rice-distance));
+  }
+
+  .js-motion .rice-index__panel {
+    display: grid;
+    grid-template-columns: var(--head-w) minmax(0, 1fr);
+    column-gap: var(--col-gap);
+    align-items: center;
+    padding: 0 0 0 var(--space-gutter);
+  }
+
+  /* Packs disappear into a soft edge rather than sliding over the heading. */
+  .js-motion .rice-index__viewport {
+    margin-top: 0;
+    overflow: clip;
+    scroll-snap-type: none;
+    mask-image: linear-gradient(to right, transparent, #000 5%);
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 5%);
+  }
+
+  .js-motion .rice-index__track {
+    padding-inline: 4% var(--space-gutter);
+  }
+
+  .js-motion .rice-index__card {
+    scroll-snap-align: none;
+  }
+}
+
+/* ─── Journey ──────────────────────────────────────────────────────────────────
+   While pinned, the chapter matching the grain's state is lit; elsewhere all
+   four read as an ordinary list. */
+
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .js-motion .journey__chapter {
+    opacity: 0.3;
+    transition: opacity 500ms var(--ease-out-expo);
+  }
+
+  .js-motion .journey[data-morph-state="0"] [data-chapter="0"],
+  .js-motion .journey[data-morph-state="1"] [data-chapter="1"],
+  .js-motion .journey[data-morph-state="2"] [data-chapter="2"],
+  .js-motion .journey[data-morph-state="3"] [data-chapter="3"] {
+    opacity: 1;
+  }
+}
+
+/* ─── Manifest band ────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .manifest-band__track {
+    width: auto;
+    justify-content: center;
+  }
+
+  .manifest-band__copy {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 1.5rem;
+    padding-inline: var(--space-gutter);
+  }
+
+  .manifest-band__copy[data-copy="1"] {
+    display: none;
+  }
+}
+
+/* ─── Portfolio filter ─────────────────────────────────────────────────────────
+   One attribute on the wrapper decides which category shows; the newly shown
+   section rises in. "all" (and no JavaScript) shows every section. */
+
+.product-groups:not([data-filter="all"]) > [data-category] {
+  display: none;
+}
+
+.product-groups[data-filter="rice"] > [data-category="rice"],
+.product-groups[data-filter="spices"] > [data-category="spices"],
+.product-groups[data-filter="pulses"] > [data-category="pulses"],
+.product-groups[data-filter="sugar"] > [data-category="sugar"] {
+  display: block;
+  animation: arrive 700ms var(--ease-out-expo) both;
+}

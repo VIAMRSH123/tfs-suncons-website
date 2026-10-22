@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useBasket } from "@/components/enquiry/basketStore";
 
 const navigation = [
   { href: "/products", label: "Products" },
@@ -13,6 +14,7 @@ const navigation = [
 
 export function Header() {
   const pathname = usePathname();
+  const basket = useBasket();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -40,6 +42,7 @@ export function Header() {
 
   return (
     <header
+      style={{ viewTransitionName: "site-header" }}
       className={`fixed inset-x-0 top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-300 ${
         isScrolled || isMenuOpen
           ? "border-b border-sand/80 bg-ivory/90 backdrop-blur-sm"
@@ -85,9 +88,15 @@ export function Header() {
           <Link
             href="/contact#enquiry"
             data-cursor-label="ENQUIRE"
-            className="t-meta border border-forest px-5 py-2.5 text-forest transition-colors duration-200 hover:bg-forest hover:text-ivory"
+            className="t-meta inline-flex items-center gap-2.5 border border-forest px-5 py-2.5 text-forest transition-colors duration-200 hover:bg-forest hover:text-ivory"
           >
             Trade enquiry
+            {basket.length > 0 ? (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center bg-gold-soft px-1.5 text-[0.625rem] text-forest-deep">
+                {basket.length}
+                <span className="sr-only"> {basket.length === 1 ? "product" : "products"} in your enquiry</span>
+              </span>
+            ) : null}
           </Link>
         </nav>
 

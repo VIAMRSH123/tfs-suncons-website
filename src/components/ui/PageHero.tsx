@@ -1,7 +1,6 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { TextReveal } from "@/components/motion/TextReveal";
-import { Reveal } from "@/components/motion/Reveal";
 
 type Crumb = { href: string; label: string };
 
@@ -13,7 +12,12 @@ type PageHeroProps = {
   tone?: "light" | "dark";
   /** Optional right-hand block. Without it the masthead stays full width. */
   aside?: ReactNode;
+  /** Give the aside half the masthead instead of five columns. */
+  isAsideWide?: boolean;
 };
+
+/** Above the fold, so it animates from first paint rather than waiting for an observer. */
+const arrive = (seconds: number) => ({ "--reveal-delay": `${seconds}s` }) as CSSProperties;
 
 /** The shared masthead for every page below the homepage. */
 export function PageHero({
@@ -23,6 +27,7 @@ export function PageHero({
   crumbs = [],
   tone = "light",
   aside,
+  isAsideWide = false,
 }: PageHeroProps) {
   const isDark = tone === "dark";
 
@@ -37,9 +42,9 @@ export function PageHero({
           aside ? "md:grid md:grid-cols-12 md:items-end md:gap-10" : ""
         }`}
       >
-        <div className={aside ? "md:col-span-6" : undefined}>
+        <div className={aside ? (isAsideWide ? "md:col-span-5" : "md:col-span-6") : undefined}>
         {crumbs.length > 0 ? (
-          <Reveal>
+          <div data-arrive style={arrive(0)}>
             <nav aria-label="Breadcrumb">
               <ol className="t-meta flex flex-wrap items-center gap-2 text-muted">
                 {crumbs.map((crumb) => (
@@ -57,13 +62,11 @@ export function PageHero({
                 </li>
               </ol>
             </nav>
-          </Reveal>
+          </div>
         ) : (
-          <Reveal>
-            <p className={`t-meta ${isDark ? "text-gold-soft" : "text-gold"}`}>
-              {eyebrow}
-            </p>
-          </Reveal>
+          <p data-arrive style={arrive(0)} className={`t-meta ${isDark ? "text-gold-soft" : "text-gold"}`}>
+            {eyebrow}
+          </p>
         )}
 
         <TextReveal
@@ -75,20 +78,22 @@ export function PageHero({
         />
 
         {description ? (
-          <Reveal delay={0.15}>
-            <p
-              className={`t-lead mt-8 max-w-[56ch] ${
-                isDark ? "text-ivory/70" : "text-charcoal/75"
-              }`}
-            >
-              {description}
-            </p>
-          </Reveal>
+          <p
+            data-arrive
+            style={arrive(0.45)}
+            className={`t-lead mt-8 max-w-[56ch] ${isDark ? "text-ivory/70" : "text-charcoal/75"}`}
+          >
+            {description}
+          </p>
         ) : null}
         </div>
 
         {aside ? (
-          <div className="mt-14 md:col-span-5 md:col-start-8 md:mt-0">
+          <div
+            data-arrive
+            style={arrive(0.3)}
+            className={`mt-14 md:mt-0 ${isAsideWide ? "md:col-span-7 md:col-start-6" : "md:col-span-5 md:col-start-8"}`}
+          >
             {aside}
           </div>
         ) : null}

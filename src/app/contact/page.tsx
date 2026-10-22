@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { PageHero } from "@/components/ui/PageHero";
+import { DohaClock } from "@/components/contact/DohaClock";
+import { PageTransition } from "@/components/layout/PageTransition";
 import { Reveal } from "@/components/motion/Reveal";
-import { EnquirySection } from "@/components/sections/EnquirySection";
+import { LazyEnquirySection } from "@/components/lazy/enquiry";
+import { PageHero } from "@/components/ui/PageHero";
 import { company } from "@/content/company";
 
 export const metadata: Metadata = {
@@ -29,19 +31,68 @@ const localBusinessSchema = {
   },
 };
 
+/** A search link rather than an embedded map: no third-party script, no cookies. */
+const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(company.address.oneLine)}`;
+
+/** The address as a drawn plate — a stylised street grid, labelled as not to scale. */
+function AddressPlate() {
+  return (
+    <a
+      href={mapsUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-cursor-label="MAP"
+      className="group block border border-sand bg-paper p-5 transition-colors hover:border-forest/50"
+    >
+      <svg viewBox="0 0 320 180" aria-hidden="true" className="h-auto w-full">
+        <g stroke="var(--color-sand)" strokeWidth="1">
+          {[30, 75, 120, 160].map((y) => (
+            <line key={`h${y}`} x1="0" y1={y} x2="320" y2={y} />
+          ))}
+          {[40, 110, 190, 260].map((x) => (
+            <line key={`v${x}`} x1={x} y1="0" x2={x} y2="180" />
+          ))}
+        </g>
+        <line x1="0" y1="120" x2="320" y2="120" stroke="var(--color-gold)" strokeWidth="2" />
+        <text x="8" y="114" className="fill-gold font-sans" fontSize="9" letterSpacing="1.5">
+          STREET 43
+        </text>
+        <circle cx="190" cy="120" r="10" fill="var(--color-forest)" className="transition-transform duration-500 group-hover:scale-110" style={{ transformOrigin: "190px 120px" }} />
+        <circle cx="190" cy="120" r="3.5" fill="var(--color-ivory)" />
+        <text x="206" y="104" className="fill-forest font-display" fontSize="15">
+          Building 493
+        </text>
+        <text x="206" y="146" className="fill-muted font-sans" fontSize="9" letterSpacing="1.5">
+          ZONE 57
+        </text>
+        <text x="206" y="160" className="fill-muted font-sans" fontSize="9" letterSpacing="1.5">
+          INDUSTRIAL AREA
+        </text>
+      </svg>
+      <span className="mt-3 flex items-baseline justify-between gap-3">
+        <span className="t-meta text-muted">Not to scale</span>
+        <span className="t-meta link-underline text-forest">Open in Google Maps ↗</span>
+      </span>
+    </a>
+  );
+}
+
 export default function ContactPage() {
   return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
-      />
+    <PageTransition>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }} />
 
       <PageHero
         eyebrow="Contact"
         lines={["Industrial Area,", "Doha."]}
-        description="The office and the stock are in the same place. Call during business hours, or send an enquiry and we'll come back to you."
+        description="Call any of the numbers below, or send an enquiry and we'll come back to you."
         crumbs={[{ href: "/", label: "Home" }]}
+        aside={
+          <div className="space-y-6">
+            <DohaClock />
+            <AddressPlate />
+          </div>
+        }
       />
 
       <section aria-labelledby="details-heading" className="bg-ivory pb-20">
@@ -51,7 +102,7 @@ export default function ContactPage() {
           </h2>
 
           <Reveal stagger className="grid gap-10 md:grid-cols-3">
-            <address className="hairline not-italic pt-5">
+            <address className="hairline pt-5 not-italic">
               <p className="t-meta text-muted">Address</p>
               <p className="t-title mt-4 text-[1.35rem] leading-snug text-forest">
                 {company.address.building},<br />
@@ -66,11 +117,7 @@ export default function ContactPage() {
               <ul className="mt-4 space-y-3">
                 {company.phones.map((phone) => (
                   <li key={phone.display}>
-                    <a
-                      href={phone.href}
-                      data-cursor-label="CALL"
-                      className="t-title link-underline text-[1.35rem] text-forest"
-                    >
+                    <a href={phone.href} data-cursor-label="CALL" className="t-title link-underline text-[1.35rem] text-forest">
                       {phone.display}
                     </a>
                     <span className="t-meta ml-3 text-muted">{phone.label}</span>
@@ -95,7 +142,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      <EnquirySection />
-    </>
+      <LazyEnquirySection index="02" />
+    </PageTransition>
   );
 }

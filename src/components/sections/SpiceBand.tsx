@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AddToEnquiry } from "@/components/enquiry/AddToEnquiry";
 import { Reveal } from "@/components/motion/Reveal";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { getProductsByCategory } from "@/content/products";
@@ -46,7 +47,7 @@ export function SpiceBand() {
                 data-cursor-label="VIEW PRODUCT"
                 className="group block"
               >
-                <div className="relative aspect-[4/5] overflow-hidden bg-paper">
+                <div className="pack-stage window-light relative aspect-[4/5] p-8">
                   {spice.image ? (
                     <Image
                       src={spice.image}
@@ -54,7 +55,7 @@ export function SpiceBand() {
                       width={1000}
                       height={1000}
                       sizes="(max-width: 640px) 90vw, 30vw"
-                      className="h-full w-full object-contain p-8 transition-transform duration-700 ease-[var(--ease-out-expo)] group-hover:scale-[1.05]"
+                      className="pack h-full w-full object-contain transition-transform duration-700 ease-[var(--ease-out-expo)] group-hover:scale-[1.05]"
                     />
                   ) : null}
                 </div>
@@ -70,6 +71,9 @@ export function SpiceBand() {
                   {spice.summary}
                 </p>
               </Link>
+              <div className="mt-4">
+                <AddToEnquiry slug={spice.slug} name={spice.name} packSizes={spice.packSizes} />
+              </div>
             </Reveal>
           ))}
         </div>

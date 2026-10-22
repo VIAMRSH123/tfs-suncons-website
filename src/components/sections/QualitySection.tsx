@@ -41,7 +41,7 @@ export function QualitySection() {
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
             <Reveal className="hairline flex items-baseline gap-4 pt-4">
-              <span className="t-index t-meta text-gold">07</span>
+              <span className="t-index t-meta text-gold">08</span>
               <span className="t-meta text-muted">Quality</span>
             </Reveal>
             <TextReveal
