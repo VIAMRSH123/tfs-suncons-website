@@ -1,6 +1,6 @@
 # Page-by-Page Redesign Plan
 
-Written 23 October 2026, from a read of every route and component in `src/`, the reference
+Written 22 October 2026, from a read of every route and component in `src/`, the reference
 research in `08-reference-sites.md`, and the measured study of the Netlify build.
 
 **Assumption:** "redesign the experience, keep the engine". The Next.js app, `products.ts` /

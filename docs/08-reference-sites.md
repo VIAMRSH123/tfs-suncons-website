@@ -1,6 +1,6 @@
 # Reference Sites — what "better than the Netlify build" takes
 
-Researched 22–23 October 2026. Every site below was **opened live** in the in-app Chromium
+Researched 22 October 2026. Every site below was **opened live** in the in-app Chromium
 browser (Apple M3 Pro, WebGL2 and WebGPU available) and its stack read from the page itself —
 canvas engine tags, scripts, fonts, transfer size — not taken from gallery blurbs. Awards come
 from the Awwwards listings, the FWA and Utsubo's 2026 Three.js roundup. Where I could not get
