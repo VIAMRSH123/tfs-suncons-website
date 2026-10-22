@@ -3,7 +3,7 @@
 A complete redesign and rebuild of **tfsuncons.com.qa** for Suncons Trading & Contracting W.L.L.
 (TF Suncons), the Doha food trading house. Next.js 16 · React 19 · TypeScript · Tailwind v4.
 No animation library: motion is CSS, driven by IntersectionObserver and a small scroll-progress
-helper (`src/lib/scroll.ts`). Redesigned 23 Oct 2026 — see `docs/10-redesign-handover.md`.
+helper (`src/lib/scroll.ts`). Redesigned 22 Oct 2026 — see `docs/10-redesign-handover.md`.
 
 ## Run it
 

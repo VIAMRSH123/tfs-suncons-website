@@ -1,6 +1,6 @@
 # Redesign Handover — TFS Suncons Website
 
-Built 23 October 2026 from `09-page-by-page-plan.md`, with the research in `08-reference-sites.md`.
+Built 22 October 2026 from `09-page-by-page-plan.md`, with the research in `08-reference-sites.md`.
 Like `06-handover.md`, this says plainly what was verified, what was measured, and what was not.
 **Nothing is committed** — every change is in the working tree.
 
