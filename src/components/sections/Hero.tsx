@@ -1,186 +1,110 @@
-"use client";
-
 import Image from "next/image";
-import { useRef } from "react";
-import { TextReveal } from "@/components/motion/TextReveal";
+import { Fragment, type CSSProperties } from "react";
+import { DepthField } from "@/components/motion/DepthField";
 import { MagneticButton } from "@/components/motion/MagneticButton";
-import {
-  gsap,
-  isTouchDevice,
-  reducedMotionNow,
-  registerGsap,
-  useIsomorphicLayoutEffect,
-} from "@/lib/motion";
+import { TextReveal } from "@/components/motion/TextReveal";
 import { company } from "@/content/company";
+import { getProduct, type Product } from "@/content/products";
 
-/** Back, mid, front — the depth order of the pack composition. */
-const packs = [
-  {
-    src: "/products/golden-grand.png",
-    alt: "Golden Grand Indian basmati rice pack",
-    depth: 1,
-    className:
-      "absolute left-0 top-[12%] w-[46%] origin-bottom -rotate-6 opacity-90",
-  },
-  {
-    src: "/products/91-telangana-gold.png",
-    alt: "91 Telangana Gold sona masoori rice pack",
-    depth: 2,
-    className: "absolute right-0 top-[6%] w-[52%] origin-bottom rotate-6",
-  },
-  {
-    src: "/products/bharat-gate.png",
-    alt: "Bharat Gate 1121 premium basmati rice pack",
-    depth: 3,
-    className: "relative z-10 mx-auto w-[64%]",
-  },
+/**
+ * Each row is read off the catalogue, and the origin column holds only what a
+ * pack or the company states: "Telangana" is printed on the 91 pack; the other
+ * two are marked Produce of India / Indian premium grade.
+ */
+const MANIFEST = [
+  { slug: "91-telangana-gold", origin: "Telangana" },
+  { slug: "bharat-gate", origin: "India" },
+  { slug: "golden-grand", origin: "India" },
 ] as const;
 
+type Row = { product: Product; origin: string; grade: string; weight: string };
+
+const rows: Row[] = MANIFEST.map(({ slug, origin }) => {
+  const product = getProduct("rice", slug);
+  if (!product) throw new Error(`Hero manifest names a product that is not in the catalogue: ${slug}`);
+  return { product, origin, grade: product.attributes[0] ?? "", weight: product.packSizes[0] ?? "" };
+});
+
+/** Where each pack stands in the composition — back to front. */
+const PACK_LAYOUT = [
+  { depth: 1, className: "left-[30%] bottom-[2%] w-[30%] -rotate-[5deg]" },
+  { depth: 2, className: "right-[1%] bottom-[5%] w-[33%] rotate-[5deg]" },
+  { depth: 3, className: "left-[47%] -bottom-[3%] w-[37%] z-10" },
+] as const;
+
+const delay = (seconds: number) => ({ "--reveal-delay": `${seconds}s` }) as CSSProperties;
+const indexed = (i: number, seconds: number) =>
+  ({ "--i": i, "--reveal-delay": `${seconds}s` }) as CSSProperties;
+
+/**
+ * "The packing list that becomes the packs." A trade document draws itself —
+ * rules, then rows — and each row's pack lands in front of it under window
+ * light. Everything is server-rendered in its final state and choreographed in
+ * CSS from first paint, so nothing waits for JavaScript; the pointer depth is
+ * the only enhancement.
+ */
 export function Hero() {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useIsomorphicLayoutEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-
-    registerGsap();
-
-    const context = gsap.context(() => {
-      const layers = gsap.utils.toArray<HTMLElement>("[data-pack]");
-
-      // 1 · entrance — the composition settles while the headline unmasks.
-      gsap.from(layers, {
-        y: 60,
-        opacity: 0,
-        scale: 0.94,
-        duration: 1.3,
-        stagger: 0.12,
-        delay: 0.25,
-        ease: "expo.out",
-      });
-
-      gsap.from("[data-hero-fade]", {
-        opacity: 0,
-        y: 18,
-        duration: 0.9,
-        stagger: 0.08,
-        delay: 0.55,
-      });
-
-      if (reducedMotionNow()) return;
-
-      // 2 · idle — slow scroll parallax, each layer at its own rate.
-      layers.forEach((layer) => {
-        const depth = Number(layer.dataset.depth ?? 1);
-        gsap.to(layer, {
-          yPercent: -6 * depth,
-          ease: "none",
-          scrollTrigger: {
-            trigger: section,
-            start: "top top",
-            end: "bottom top",
-            scrub: true,
-          },
-        });
-      });
-
-      // 3 · cursor drift — pointer only, refs only, no React state.
-      if (isTouchDevice()) return;
-
-      const drifts = layers.map((layer) => ({
-        x: gsap.quickTo(layer, "x", { duration: 1.1, ease: "power3.out" }),
-        y: gsap.quickTo(layer, "y", { duration: 1.1, ease: "power3.out" }),
-        depth: Number(layer.dataset.depth ?? 1),
-      }));
-
-      const handleMove = (event: PointerEvent) => {
-        const relX = event.clientX / window.innerWidth - 0.5;
-        const relY = event.clientY / window.innerHeight - 0.5;
-        drifts.forEach((drift) => {
-          drift.x(relX * drift.depth * 14);
-          drift.y(relY * drift.depth * 10);
-        });
-      };
-
-      window.addEventListener("pointermove", handleMove, { passive: true });
-      return () => window.removeEventListener("pointermove", handleMove);
-    }, section);
-
-    return () => context.revert();
-  }, []);
-
   return (
-    <section
-      ref={sectionRef}
-      aria-labelledby="hero-heading"
-      className="grain relative overflow-hidden bg-ivory pt-[72px]"
-    >
-      <div className="shell grid min-h-[88svh] items-center gap-12 py-14 md:grid-cols-12 md:gap-8 md:py-20">
-        <div className="md:col-span-7 lg:col-span-6">
-          <p data-hero-fade className="t-meta text-gold">
-            {company.legalName} · Doha
+    <section aria-labelledby="hero-heading" className="grain relative overflow-hidden bg-ivory pt-[72px]">
+      <div className="shell grid min-h-[88svh] items-center gap-14 py-12 md:grid-cols-12 md:gap-8 md:py-16">
+        <div className="md:col-span-6 lg:col-span-5">
+          <p data-arrive style={delay(0.05)} className="t-meta text-gold">
+            {company.tradingName} · Doha trading house
           </p>
 
           <TextReveal
             as="h1"
             id="hero-heading"
             immediate
-            delay={0.15}
+            delay={0.12}
             lines={["Quality that", "travels well."]}
             className="t-hero mt-6 text-forest"
           />
 
-          <p
-            data-hero-fade
-            className="t-lead mt-8 max-w-[46ch] text-charcoal/75"
-          >
-            Basmati, sona masoori, ground spices and pulses — sourced in India,
-            packed for the trade in 18, 20 and 35&nbsp;kg, and supplied to
-            Qatar&rsquo;s wholesalers, supermarkets, hotels and caterers.
+          <p data-arrive style={delay(0.55)} className="t-lead mt-8 max-w-[44ch] text-charcoal/75">
+            Basmati, sona masoori, ground spices and pulses — sourced in India, packed for the
+            trade in 18, 20 and 35&nbsp;kg, and supplied to Qatar&rsquo;s wholesalers,
+            supermarkets, hotels and caterers.
           </p>
 
-          <div data-hero-fade className="mt-10 flex flex-wrap items-center gap-4">
+          <div data-arrive style={delay(0.7)} className="mt-10 flex flex-wrap items-center gap-4">
             <MagneticButton href="/products" cursorLabel="VIEW">
               View the portfolio
             </MagneticButton>
-            <MagneticButton
-              href="/contact#enquiry"
-              variant="outline"
-              cursorLabel="ENQUIRE"
-              className="text-forest"
-            >
+            <MagneticButton href="/contact#enquiry" variant="outline" cursorLabel="ENQUIRE" className="text-forest">
               Start a trade enquiry
             </MagneticButton>
           </div>
         </div>
 
-        <div className="md:col-span-5 lg:col-span-6">
-          <div className="relative mx-auto flex aspect-[5/4] w-full max-w-[640px] items-end justify-center">
-            {/* Stage: a soft pool of light the packs stand on. */}
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-[8%] bottom-[6%] h-[62%] rounded-[50%] bg-[radial-gradient(ellipse_at_center,color-mix(in_oklab,var(--color-forest)_16%,transparent)_0%,transparent_68%)]"
-            />
-            {packs.map((pack) => (
+        <DepthField className="window-light relative mx-auto w-full max-w-[44rem] md:col-span-6 lg:col-span-7">
+          <div className="relative aspect-[5/4.4] w-full">
+            <PackingList />
+
+            {rows.map(({ product }, i) => (
               <div
-                key={pack.src}
-                data-pack
-                data-depth={pack.depth}
-                className={pack.className}
+                key={product.slug}
+                data-depth={PACK_LAYOUT[i].depth}
+                className={`absolute ${PACK_LAYOUT[i].className}`}
               >
-                <Image
-                  src={pack.src}
-                  alt={pack.alt}
-                  width={1000}
-                  height={1000}
-                  priority={pack.depth === 3}
-                  sizes="(max-width: 768px) 60vw, 34vw"
-                  className="h-auto w-full drop-shadow-[0_28px_48px_rgba(19,48,31,0.22)]"
-                />
+                <div data-arrive style={{ ...delay(1.25 + i * 0.16), "--reveal-distance": "44px" } as CSSProperties}>
+                  <span className="t-meta absolute -top-1 left-[8%] z-10 bg-forest px-1.5 py-0.5 text-[0.625rem] text-ivory">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <Image
+                    src={product.image ?? ""}
+                    alt={product.imageAlt}
+                    width={1000}
+                    height={1000}
+                    priority={PACK_LAYOUT[i].depth === 3}
+                    sizes="(max-width: 768px) 38vw, 18vw"
+                    className="pack h-auto w-full"
+                  />
+                </div>
               </div>
             ))}
           </div>
-        </div>
+        </DepthField>
       </div>
 
       <div className="shell">
@@ -194,5 +118,72 @@ export function Hero() {
         </div>
       </div>
     </section>
+  );
+}
+
+/** The document itself: real text, a real table, rules that draw in. */
+function PackingList() {
+  return (
+    /* Depth (pointer) and arrival (CSS animation) sit on separate elements: an
+       animation's final frame would otherwise override the inline translate. */
+    <div data-depth="1" className="absolute left-0 top-0 w-[86%] -rotate-[1.4deg]">
+    <div
+      data-arrive
+      data-draw-now
+      style={delay(0.3)}
+      className="bg-paper px-5 py-5 shadow-[0_30px_60px_-34px_rgb(19_48_31/0.45)] md:px-7 md:py-6"
+    >
+      <div className="flex items-baseline justify-between gap-4">
+        <p className="font-display text-[clamp(1.05rem,0.8rem+0.9vw,1.5rem)] tracking-[-0.01em] text-forest">
+          Packing list
+        </p>
+        <p className="t-meta text-gold">TFS / DOH · No. 91</p>
+      </div>
+      <div data-draw-rule style={indexed(0, 0.45)} className="mt-3 h-px bg-forest/70" />
+      <p className="t-meta mt-3 text-[0.6rem] text-muted">
+        Shipper · {company.legalName}
+      </p>
+
+      <table className="mt-4 w-full border-collapse text-left">
+        <caption className="sr-only">Three of the rice lines TFS supplies, as a packing list</caption>
+        <thead>
+          <tr className="t-meta text-[0.6rem] text-muted">
+            <th scope="col" className="pb-2 pr-2 font-medium">No.</th>
+            <th scope="col" className="pb-2 pr-2 font-medium">Description</th>
+            <th scope="col" className="hidden pb-2 pr-2 font-medium sm:table-cell">Grade</th>
+            <th scope="col" className="pb-2 pr-2 text-right font-medium">Net wt</th>
+            <th scope="col" className="hidden pb-2 text-right font-medium sm:table-cell">Origin</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ product, grade, weight, origin }, i) => (
+            <Fragment key={product.slug}>
+              {/* A ruled line that draws in — decoration, so screen readers skip it. */}
+              <tr aria-hidden="true">
+                <td colSpan={5} className="p-0">
+                  <div data-draw-rule style={indexed(i + 1, 0.55)} className="h-px bg-sand" />
+                </td>
+              </tr>
+              <tr
+                data-arrive
+                style={{ ...delay(0.85 + i * 0.12), "--reveal-distance": "0px" } as CSSProperties}
+                className="align-baseline text-[clamp(0.72rem,0.62rem+0.35vw,0.9rem)] text-charcoal"
+              >
+                <td className="t-index py-2.5 pr-2 text-gold">{String(i + 1).padStart(2, "0")}</td>
+                <td className="py-2.5 pr-2 font-display text-[1.1em] text-forest">{product.name}</td>
+                <td className="hidden py-2.5 pr-2 text-muted sm:table-cell">{grade}</td>
+                <td className="t-index py-2.5 pr-2 text-right">{weight}</td>
+                <td className="hidden py-2.5 text-right text-muted sm:table-cell">{origin}</td>
+              </tr>
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+      <div data-draw-rule style={indexed(4, 0.6)} className="h-px bg-forest/70" />
+      <p data-arrive style={delay(1.2)} className="t-meta mt-3 text-[0.6rem] text-muted">
+        Labelled in three scripts · EN · AR · TE
+      </p>
+    </div>
+    </div>
   );
 }

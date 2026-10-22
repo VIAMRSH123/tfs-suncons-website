@@ -222,3 +222,8 @@ export function buildStates(
     roundel(count, golds, rng),
   ];
 }
+
+/** Just the pack mark — the numerals in a ring, held by the wheat wreath. */
+export function buildMark(count: number, golds: readonly boolean[], rng: () => number): Point[] {
+  return roundel(count, golds, rng);
+}

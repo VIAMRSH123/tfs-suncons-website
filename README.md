@@ -1,8 +1,9 @@
 # TFS Suncons — Website
 
 A complete redesign and rebuild of **tfsuncons.com.qa** for Suncons Trading & Contracting W.L.L.
-(TF Suncons), the Doha food trading house. Next.js 16 · React 19 · TypeScript · Tailwind v4 ·
-GSAP + ScrollTrigger · Lenis.
+(TF Suncons), the Doha food trading house. Next.js 16 · React 19 · TypeScript · Tailwind v4.
+No animation library: motion is CSS, driven by IntersectionObserver and a small scroll-progress
+helper (`src/lib/scroll.ts`). Redesigned 23 Oct 2026 — see `docs/10-redesign-handover.md`.
 
 ## Run it
 
@@ -16,6 +17,7 @@ npm run dev          # http://localhost:3000
 npm run build && npm start   # production
 npm run typecheck            # tsc --noEmit
 npm run lint                 # eslint
+npm test                     # vitest — basket, planner, scroll maths, catalogue, enquiry checks
 ```
 
 > The dev server must be launched outside the Claude Code sandbox in this environment
@@ -33,7 +35,11 @@ website/
 │   ├── 03-asset-inventory.md  every image, including the ones we would not ship
 │   ├── 04-competitor-research.md
 │   ├── 05-design-direction.md the visual system and why
-│   └── 06-handover.md         build + test results, open items
+│   ├── 06-handover.md         the original build's results and open items
+│   ├── 07-upgrade-plan.md     wave plan written after studying the Netlify build
+│   ├── 08-reference-sites.md  16 award-winning sites opened live, and what they taught
+│   ├── 09-page-by-page-plan.md the redesign plan, page by page
+│   └── 10-redesign-handover.md what the redesign built, measured and left open
 ├── public/
 │   ├── brand/                 logo, about banner, rice-sack composite
 │   ├── journey/               watercolour farm vignettes
@@ -41,8 +47,14 @@ website/
 └── src/
     ├── app/                   routes, API, sitemap, robots
     ├── components/
-    │   ├── layout/            Header, Footer, SmoothScroll
-    │   ├── motion/            CustomCursor, TextReveal, ImageReveal, MagneticButton, Reveal
+    │   ├── layout/            Header, Footer (bill of lading), PageTransition
+    │   ├── motion/            Reveal, TextReveal, ImageReveal, DrawOnView, MagneticButton,
+    │   │                      CustomCursor, DepthField, GrainMorph, GrainMark, FlagStorm, TradeBoard
+    │   ├── enquiry/           basket store, Add to enquiry, tray, basket lines
+    │   ├── products/          filter, catalogue card, pack inspector, print button
+    │   ├── categories/        grade guide, spice study, pulse specimens, sugar feature
+    │   ├── about/ · contact/  chapter index, reach diagram · Doha clock
+    │   └── lazy/              next/dynamic loaders for below-the-fold sections
     │   ├── sections/          the nine homepage sections
     │   └── ui/                PageHero, ProductCard, SectionHeading
     ├── content/               company.ts + products.ts — the only source of copy and catalogue

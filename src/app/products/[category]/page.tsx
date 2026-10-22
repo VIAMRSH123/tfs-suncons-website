@@ -1,15 +1,22 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { GradeGuide } from "@/components/categories/GradeGuide";
+import { PulseSpecimens } from "@/components/categories/PulseSpecimens";
+import { SpiceStudy } from "@/components/categories/SpiceStudy";
+import { SugarFeature } from "@/components/categories/SugarFeature";
+import { PageTransition } from "@/components/layout/PageTransition";
+import { GrainMark } from "@/components/motion/GrainMark";
+import { MagneticButton } from "@/components/motion/MagneticButton";
+import { Reveal } from "@/components/motion/Reveal";
+import { NinetyOneMark } from "@/components/ui/NinetyOneMark";
 import { PageHero } from "@/components/ui/PageHero";
 import { ProductCard } from "@/components/ui/ProductCard";
-import { Reveal } from "@/components/motion/Reveal";
-import { MagneticButton } from "@/components/motion/MagneticButton";
-import { NinetyOneMark } from "@/components/ui/NinetyOneMark";
 import {
   categories,
   getCategory,
   getProductsByCategory,
   type CategorySlug,
+  type Product,
 } from "@/content/products";
 
 type Params = { params: Promise<{ category: string }> };
@@ -30,16 +37,50 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
+function ProductGrid({ items }: { items: readonly Product[] }) {
+  return (
+    <section aria-label="Products" className="section bg-ivory pt-0">
+      <div className="shell">
+        <div className="grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((product, index) => (
+            <Reveal key={product.slug} delay={(index % 3) * 0.06}>
+              <ProductCard product={product} index={index} />
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Each category gets the treatment its material suggests — one idea per page. */
+function CategoryBody({ slug, items }: { slug: CategorySlug; items: readonly Product[] }) {
+  switch (slug) {
+    case "rice":
+      return (
+        <>
+          <ProductGrid items={items} />
+          <GradeGuide items={items} />
+        </>
+      );
+    case "spices":
+      return <SpiceStudy items={items} />;
+    case "pulses":
+      return <PulseSpecimens items={items} />;
+    case "sugar":
+      return items[0] ? <SugarFeature product={items[0]} /> : null;
+  }
+}
+
 export default async function CategoryPage({ params }: Params) {
   const { category: slug } = await params;
   const category = getCategory(slug);
   if (!category) notFound();
 
   const items = getProductsByCategory(category.slug as CategorySlug);
-  const hasPhotography = items.some((product) => product.image);
 
   return (
-    <>
+    <PageTransition>
       <PageHero
         eyebrow={category.name}
         lines={[category.tagline]}
@@ -48,58 +89,35 @@ export default async function CategoryPage({ params }: Params) {
           { href: "/", label: "Home" },
           { href: "/products", label: "Products" },
         ]}
+        aside={
+          category.slug === "rice" ? (
+            <GrainMark
+              className="mx-auto w-full max-w-[26rem]"
+              label="The 91 mark, built from rice grain"
+            />
+          ) : undefined
+        }
       />
 
-      <section
-        aria-label={`${category.name} products`}
-        className="section bg-ivory pt-0"
-      >
-        <div className="shell">
-          <div className="grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((product, index) => (
-              <Reveal key={product.slug} delay={(index % 3) * 0.06}>
-                <ProductCard product={product} index={index} />
-              </Reveal>
-            ))}
-          </div>
+      <CategoryBody slug={category.slug} items={items} />
 
-          {!hasPhotography ? (
-            <Reveal className="hairline mt-14 pt-5">
-              <p className="max-w-[60ch] text-sm leading-relaxed text-muted">
-                We don&rsquo;t yet have our own photography for this range, so
-                these lines are listed without pack images rather than shown
-                with stock pictures of someone else&rsquo;s product. Pack sizes
-                and grades are quoted on enquiry.
-              </p>
-            </Reveal>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="dark-section section relative overflow-hidden">
+      <section className="dark-section contours section relative overflow-hidden">
         <NinetyOneMark className="-bottom-16 right-[4%]" size="lg" tone="dark" />
         <div className="shell relative grid items-center gap-10 md:grid-cols-12">
           <div className="md:col-span-7">
-            <h2 className="t-display text-ivory">
-              Buying {category.name.toLowerCase()} for the trade?
-            </h2>
+            <h2 className="t-display text-ivory">Buying {category.name.toLowerCase()} for the trade?</h2>
             <p className="t-lead mt-5 max-w-[46ch] text-ivory/70">
-              Tell us the volume and how often you order. We&rsquo;ll come back
-              with availability, pack options and terms.
+              Tell us the volume and how often you order. We&rsquo;ll come back with availability, pack
+              options and terms.
             </p>
           </div>
           <div className="md:col-span-4 md:col-start-9">
-            <MagneticButton
-              href="/contact#enquiry"
-              variant="outline"
-              className="text-ivory"
-              cursorLabel="ENQUIRE"
-            >
+            <MagneticButton href="/contact#enquiry" variant="outline" className="text-ivory" cursorLabel="ENQUIRE">
               Start a trade enquiry
             </MagneticButton>
           </div>
         </div>
       </section>
-    </>
+    </PageTransition>
   );
 }

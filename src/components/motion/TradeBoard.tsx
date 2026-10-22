@@ -1,13 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import {
-  gsap,
-  registerGsap,
-  reducedMotionNow,
-  ScrollTrigger,
-  useIsomorphicLayoutEffect,
-} from "@/lib/motion";
+import { useEffect, useRef } from "react";
+import { observeVisibility, reducedMotionNow } from "@/lib/motion";
 
 /** The characters a flap cycles through before it lands. */
 const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ·";
@@ -39,58 +33,64 @@ const RIGHT_WIDTH = 6;
 export function TradeBoard() {
   const rootRef = useRef<HTMLDivElement>(null);
 
-  useIsomorphicLayoutEffect(() => {
+  useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    if (reducedMotionNow()) return;
 
-    registerGsap();
+    const cells = Array.from(root.querySelectorAll<HTMLElement>("[data-cell]"));
+    let frame = 0;
 
-    const context = gsap.context(() => {
-      const cells = gsap.utils.toArray<HTMLElement>("[data-cell]");
+    // One frame loop drives every flap: each has its own spin count, duration
+    // and start offset, and eases out (power2) onto its character.
+    const run = () => {
+      cancelAnimationFrame(frame);
+      const flaps = cells.map((cell, index) => ({
+        cell,
+        index,
+        target: cell.dataset.target ?? "",
+        spins: 7 + (index % 5) * 2,
+        duration: 500 + (index % 7) * 90,
+        delay: index * 12,
+      }));
+      const startedAt = performance.now();
 
-      if (reducedMotionNow()) {
-        cells.forEach((cell) => {
-          cell.textContent = cell.dataset.target ?? "";
-        });
-        return;
-      }
-
-      const run = () => {
-        cells.forEach((cell, index) => {
-          const target = cell.dataset.target ?? "";
-          const state = { step: 0 };
-          const spins = 7 + (index % 5) * 2;
-
-          gsap.to(state, {
-            step: spins,
-            duration: 0.5 + (index % 7) * 0.09,
-            ease: "power2.out",
-            delay: index * 0.012,
-            onUpdate: () => {
-              const i = Math.floor(state.step);
-              cell.textContent =
-                i >= spins - 1 ? target : GLYPHS[(i * 7 + index) % GLYPHS.length];
-            },
-            onComplete: () => {
-              cell.textContent = target;
-            },
-          });
-        });
+      const tick = (now: number) => {
+        let isBusy = false;
+        for (const flap of flaps) {
+          const t = (now - startedAt - flap.delay) / flap.duration;
+          if (t >= 1) {
+            if (flap.cell.textContent !== flap.target) flap.cell.textContent = flap.target;
+            continue;
+          }
+          isBusy = true;
+          if (t < 0) continue;
+          const step = Math.floor((1 - (1 - t) * (1 - t)) * flap.spins);
+          flap.cell.textContent =
+            step >= flap.spins - 1
+              ? flap.target
+              : GLYPHS[(step * 7 + flap.index) % GLYPHS.length];
+        }
+        frame = isBusy ? requestAnimationFrame(tick) : 0;
       };
+      frame = requestAnimationFrame(tick);
+    };
 
-      ScrollTrigger.create({
-        trigger: root,
-        start: "top 80%",
-        onEnter: run,
-        onEnterBack: run,
-      });
+    // Like the departures board it imitates, it flips each time it comes into view.
+    let wasVisible = false;
+    const stopWatching = observeVisibility(
+      root,
+      (isVisible) => {
+        if (isVisible && !wasVisible) run();
+        wasVisible = isVisible;
+      },
+      "0px 0px -20% 0px",
+    );
 
-      // ScrollTrigger only fires on a crossing, so a board that is already in
-      // view on load (deep link, reload mid-page) would sit blank forever.
-      if (root.getBoundingClientRect().top < window.innerHeight * 0.8) run();
-    }, root);
-
-    return () => context.revert();
+    return () => {
+      stopWatching();
+      cancelAnimationFrame(frame);
+    };
   }, []);
 
   const renderCells = (text: string, width: number, padStart: boolean) => {
@@ -107,7 +107,7 @@ export function TradeBoard() {
           padStart ? "text-gold" : "text-charcoal"
         }`}
       >
-        {" "}
+        {char}
       </span>
     ));
   };

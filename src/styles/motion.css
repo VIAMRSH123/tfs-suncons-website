@@ -1,0 +1,332 @@
+/* ─── Motion system ────────────────────────────────────────────────────────────
+   Five verbs, all CSS: rise · unmask · settle · draw · track.
+   JavaScript only flags arrival (`data-revealed`, via IntersectionObserver);
+   above-the-fold reveals are plain animations that never wait for hydration.
+   Hidden states exist only under `.js-motion` (on <html>); a <noscript> rule
+   and the reduced-motion block at the end turn every one of them off.
+   Transform and opacity only — `translate`/`scale` are compositor properties.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* rise — blocks and staggered children */
+.js-motion [data-reveal]:not([data-reveal="stagger"]),
+.js-motion [data-reveal="stagger"] > * {
+  opacity: 0;
+  translate: 0 var(--reveal-distance, 24px);
+  transition:
+    opacity 900ms var(--ease-out-expo) var(--reveal-at, 0s),
+    translate 900ms var(--ease-out-expo) var(--reveal-at, 0s);
+}
+
+.js-motion [data-reveal]:not([data-reveal="stagger"]) {
+  --reveal-at: var(--reveal-delay, 0s);
+}
+
+.js-motion [data-reveal="stagger"] > * {
+  --reveal-at: calc(var(--reveal-delay, 0s) + var(--i, 0) * 60ms);
+}
+
+.js-motion [data-reveal][data-revealed]:not([data-reveal="stagger"]),
+.js-motion [data-reveal="stagger"][data-revealed] > * {
+  opacity: 1;
+  translate: 0 0;
+}
+
+/* unmask — each heading line rises from behind its own mask */
+.js-motion [data-reveal-line] [data-line-inner] {
+  translate: 0 105%;
+  transition: translate 1050ms var(--ease-out-expo)
+    calc(var(--reveal-delay, 0s) + var(--line, 0) * 90ms);
+}
+
+.js-motion [data-reveal-line][data-revealed] [data-line-inner] {
+  translate: 0 0;
+}
+
+.js-motion [data-reveal-line][data-immediate] [data-line-inner] {
+  transition: none;
+  animation: line-up 1050ms var(--ease-out-expo)
+    calc(var(--reveal-delay, 0s) + var(--line, 0) * 90ms) both;
+}
+
+@keyframes line-up {
+  from {
+    translate: 0 105%;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
+/* settle — a clip wipe with the picture easing out of a slight zoom */
+.js-motion [data-reveal-mask] {
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 1150ms var(--ease-out-expo) var(--reveal-delay, 0s);
+}
+
+.js-motion [data-reveal-mask] img {
+  scale: 1.06;
+  transition: scale 1400ms var(--ease-out-expo) var(--reveal-delay, 0s);
+}
+
+.js-motion [data-reveal-mask][data-revealed] {
+  clip-path: inset(0 0 0 0);
+}
+
+.js-motion [data-reveal-mask][data-revealed] img {
+  scale: 1;
+}
+
+/* draw — trade-document rules and SVG strokes that draw themselves.
+   SVG shapes carry pathLength="1", so one dash covers any path. */
+.js-motion [data-draw] :is(path, line, polyline, rect, circle, ellipse) {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 1400ms var(--ease-in-out-soft)
+    calc(var(--reveal-delay, 0s) + var(--i, 0) * 70ms);
+}
+
+.js-motion [data-draw][data-revealed] :is(path, line, polyline, rect, circle, ellipse) {
+  stroke-dashoffset: 0;
+}
+
+.js-motion [data-draw-rule] {
+  scale: 0 1;
+  transform-origin: left center;
+  transition: scale 1100ms var(--ease-out-expo) calc(var(--reveal-delay, 0s) + var(--i, 0) * 80ms);
+}
+
+.js-motion [data-revealed] [data-draw-rule],
+.js-motion [data-draw-rule][data-revealed] {
+  scale: 1 1;
+}
+
+/* Above the fold, draw from first paint — no observer involved. */
+.js-motion [data-draw-now] :is(path, line, polyline, rect, circle, ellipse) {
+  stroke-dasharray: 1;
+  animation: draw-in 1600ms var(--ease-in-out-soft)
+    calc(var(--reveal-delay, 0s) + var(--i, 0) * 70ms) both;
+}
+
+.js-motion [data-draw-now] [data-draw-rule] {
+  transition: none;
+  animation: rule-in 1100ms var(--ease-out-expo)
+    calc(var(--reveal-delay, 0s) + var(--i, 0) * 80ms) both;
+}
+
+@keyframes draw-in {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes rule-in {
+  from {
+    scale: 0 1;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+/* Plain first-paint fades for hero pieces that are not lines or strokes. */
+.js-motion [data-arrive] {
+  animation: arrive 1000ms var(--ease-out-expo) var(--reveal-delay, 0s) both;
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    translate: 0 var(--reveal-distance, 18px);
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes heroCue {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+    transform-origin: top;
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleY(1);
+    transform-origin: top;
+    opacity: 1;
+  }
+}
+
+/* ─── Page transitions ─────────────────────────────────────────────────────────
+   React's <ViewTransition> on each page; the header holds still as an anchor
+   while the content cross-fades — old leaves fast, new arrives gently. */
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-group(site-header) {
+  animation: none;
+  z-index: 100;
+}
+
+::view-transition-old(site-header) {
+  display: none;
+}
+
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+::view-transition-old(.page) {
+  animation: page-out 160ms var(--ease-in-out-soft) both;
+}
+
+::view-transition-new(.page) {
+  animation: page-in 460ms var(--ease-out-expo) 120ms both;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+}
+
+/* ─── Custom cursor ────────────────────────────────────────────────────────────
+   Position is a `translate` written on animation frames; everything else is a
+   state the CSS transitions between. Negative margins centre each piece on
+   the pointer. */
+.custom-cursor__ring,
+.custom-cursor__dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 9999px;
+  opacity: 0;
+  transition: opacity 300ms var(--ease-out-expo);
+}
+
+.custom-cursor__ring {
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: -1.125rem 0 0 -1.125rem;
+  border: 1px solid color-mix(in oklab, var(--color-forest) 40%, transparent);
+  mix-blend-mode: multiply;
+  transition:
+    opacity 300ms var(--ease-out-expo),
+    scale 400ms var(--ease-out-expo);
+}
+
+.custom-cursor__dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  margin: -0.1875rem 0 0 -0.1875rem;
+  background: var(--color-forest);
+}
+
+.custom-cursor__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scale: 0.4;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--color-forest);
+  opacity: 0;
+  transition: opacity 250ms var(--ease-out-expo);
+}
+
+.custom-cursor[data-visible="true"] .custom-cursor__ring,
+.custom-cursor[data-visible="true"] .custom-cursor__dot {
+  opacity: 1;
+}
+
+.custom-cursor[data-state="hover"] .custom-cursor__ring {
+  scale: 1.7;
+}
+
+.custom-cursor[data-state="label"] .custom-cursor__ring {
+  scale: 2.6;
+}
+
+.custom-cursor[data-state="label"] .custom-cursor__label {
+  opacity: 1;
+}
+
+/* The native cursor is only hidden once the custom one is actually running,
+   and never on touch devices or under reduced motion. Form fields keep their
+   text caret — hiding it there would make the site harder to use. */
+.has-custom-cursor,
+.has-custom-cursor a,
+.has-custom-cursor button {
+  cursor: none;
+}
+
+/* ─── Reduced motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .js-motion [data-reveal],
+  .js-motion [data-reveal="stagger"] > *,
+  .js-motion [data-reveal-line] [data-line-inner],
+  .js-motion [data-reveal-mask],
+  .js-motion [data-reveal-mask] img,
+  .js-motion [data-arrive],
+  .js-motion [data-draw-rule] {
+    opacity: 1 !important;
+    translate: none !important;
+    scale: none !important;
+    clip-path: none !important;
+  }
+
+  .js-motion [data-draw] :is(path, line, polyline, rect, circle, ellipse),
+  .js-motion [data-draw-now] :is(path, line, polyline, rect, circle, ellipse) {
+    stroke-dashoffset: 0 !important;
+  }
+
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
+
+/* ─── Enquiry tray ─────────────────────────────────────────────────────────── */
+.enquiry-tray__pill {
+  opacity: 0;
+  translate: 0 16px;
+  pointer-events: none;
+  transition:
+    opacity 300ms var(--ease-out-expo),
+    translate 500ms var(--ease-out-expo);
+}
+
+.enquiry-tray[data-shown="true"] .enquiry-tray__pill {
+  opacity: 1;
+  translate: 0 0;
+  pointer-events: auto;
+}

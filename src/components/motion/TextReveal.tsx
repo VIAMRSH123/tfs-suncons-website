@@ -1,12 +1,7 @@
 "use client";
 
-import { useRef, type ElementType } from "react";
-import {
-  gsap,
-  registerGsap,
-  SCROLL_START,
-  useIsomorphicLayoutEffect,
-} from "@/lib/motion";
+import { useEffect, useRef, type CSSProperties, type ElementType } from "react";
+import { revealOnEnter } from "@/lib/motion";
 
 type TextRevealProps = {
   /** Each entry is one masked line. Copy is authored as lines deliberately. */
@@ -14,7 +9,7 @@ type TextRevealProps = {
   as?: ElementType;
   className?: string;
   delay?: number;
-  /** Play immediately rather than on scroll — used by the hero. */
+  /** Play from first paint rather than on scroll — above-the-fold headings. */
   immediate?: boolean;
   id?: string;
 };
@@ -22,7 +17,9 @@ type TextRevealProps = {
 /**
  * The "unmask" verb: each line slides up from behind its own mask.
  * The lines are real text in the DOM at all times, so the heading stays
- * selectable, searchable and readable to assistive technology.
+ * selectable, searchable and readable to assistive technology. `immediate`
+ * headings are a plain CSS animation — they never wait for hydration, which
+ * keeps them out of the way of the largest contentful paint.
  */
 export function TextReveal({
   lines,
@@ -34,49 +31,24 @@ export function TextReveal({
 }: TextRevealProps) {
   const ref = useRef<HTMLElement>(null);
 
-  useIsomorphicLayoutEffect(() => {
+  useEffect(() => {
     const element = ref.current;
-    if (!element) return;
-
-    registerGsap();
-
-    const context = gsap.context(() => {
-      const inner = element.querySelectorAll<HTMLElement>("[data-line-inner]");
-
-      // `y: 0` is load-bearing. The CSS pre-hide uses translateY(105%), which
-      // GSAP reads back as a `y` offset in px; without resetting it, `yPercent`
-      // stacks on top of it and the line never returns to the baseline.
-      gsap.fromTo(
-        inner,
-        { yPercent: 105, y: 0 },
-        {
-          yPercent: 0,
-          y: 0,
-          duration: 1.05,
-          delay,
-          stagger: 0.09,
-          ease: "expo.out",
-          ...(immediate
-            ? {}
-            : {
-                scrollTrigger: {
-                  trigger: element,
-                  start: SCROLL_START,
-                  once: true,
-                },
-              }),
-        },
-      );
-    }, element);
-
-    return () => context.revert();
-  }, [delay, immediate, lines]);
+    if (!element || immediate) return;
+    return revealOnEnter(element);
+  }, [immediate]);
 
   return (
-    <Tag ref={ref} id={id} className={className} data-reveal-line>
-      {lines.map((line) => (
+    <Tag
+      ref={ref}
+      id={id}
+      className={className}
+      data-reveal-line
+      data-immediate={immediate ? "" : undefined}
+      style={{ "--reveal-delay": `${delay}s` } as CSSProperties}
+    >
+      {lines.map((line, index) => (
         <span key={line} className="block overflow-hidden pb-[0.08em]">
-          <span data-line-inner className="block">
+          <span data-line-inner className="block" style={{ "--line": index } as CSSProperties}>
             {line}
           </span>
         </span>

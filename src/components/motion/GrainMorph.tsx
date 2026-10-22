@@ -1,13 +1,8 @@
 "use client";
 
-import { useRef } from "react";
-import {
-  gsap,
-  registerGsap,
-  reducedMotionNow,
-  ScrollTrigger,
-  useIsomorphicLayoutEffect,
-} from "@/lib/motion";
+import { useEffect, useRef } from "react";
+import { reducedMotionNow } from "@/lib/motion";
+import { trackScrollProgress, type ProgressRange } from "@/lib/scroll";
 import {
   GRAIN_PALETTE,
   clamp01,
@@ -22,6 +17,30 @@ import { STATE_LABELS, buildStates } from "./grainStates";
 const COUNT = 1500;
 /** Enough gold to build the wheat wreath in the final state. */
 const GOLD_RATIO = 0.2;
+/** Per-frame catch-up toward the scroll position — a soft scrub. */
+const SCRUB_SMOOTHING = 0.12;
+
+/**
+ * The last state is the payoff, so by default the sequence finishes while the
+ * panel is still well inside the viewport — not as it leaves.
+ */
+const DEFAULT_RANGE: ProgressRange = { start: 0.92, end: 0.62 };
+
+type GrainMorphProps = {
+  className?: string;
+  /**
+   * A selector for an ancestor whose scroll drives the sequence — a tall,
+   * pinned story section. Defaults to the figure itself.
+   */
+  driverSelector?: string;
+  range?: ProgressRange;
+  /**
+   * The media query under which the driver is actually pinned. When it does
+   * not match (phones), the figure drives itself over the default range.
+   */
+  pinnedMedia?: string;
+  showCaption?: boolean;
+};
 
 /**
  * The company's sentence, drawn in its own product: a field of rice grain that
@@ -29,22 +48,34 @@ const GOLD_RATIO = 0.2;
  * finally the 91 mark the whole range is sold under.
  *
  * Each grain keeps its identity across all four states and is released on its
- * own delay, so the field ripples into shape rather than snapping. The loop is
- * suspended whenever the panel is off screen, and reduced motion gets the
- * final state rendered once, with no animation at all.
+ * own delay, so the field ripples into shape rather than snapping. It paints
+ * only when scroll moves it, writes the current chapter to the driver's
+ * `data-morph-state` so surrounding copy can follow without React re-renders,
+ * and reduced motion gets the final state painted once.
  */
-export function GrainMorph() {
-  const wrapRef = useRef<HTMLDivElement>(null);
+export function GrainMorph({
+  className = "max-w-[30rem]",
+  driverSelector,
+  range = DEFAULT_RANGE,
+  pinnedMedia,
+  showCaption = true,
+}: GrainMorphProps) {
+  const wrapRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
-  const progress = useRef(0);
+  const { start, end } = range;
 
-  useIsomorphicLayoutEffect(() => {
+  useEffect(() => {
     const wrap = wrapRef.current;
     const canvas = canvasRef.current;
     if (!wrap || !canvas) return;
 
-    registerGsap();
+    const story = driverSelector ? wrap.closest<HTMLElement>(driverSelector) : null;
+    const isPinned = Boolean(story) && (!pinnedMedia || window.matchMedia(pinnedMedia).matches);
+    const driver = isPinned && story ? story : wrap;
+    const activeRange = isPinned ? { start, end } : DEFAULT_RANGE;
+    // Surrounding copy follows the chapter even when the figure drives itself.
+    const stateTarget = story ?? wrap;
 
     const rng = seeded(20261019);
     const golds = Array.from({ length: COUNT }, () => rng() < GOLD_RATIO);
@@ -52,10 +83,8 @@ export function GrainMorph() {
     const offsets = Array.from({ length: COUNT }, () => rng() * 0.42);
     const sizes = Array.from({ length: COUNT }, () => 0.72 + rng() * 0.58);
 
-    const { stage, destroy } = mountCanvas(canvas);
-    let raf = 0;
-    let running = false;
-    let lastLabel = -1;
+    let progress = 0;
+    let lastState = -1;
 
     const paint = () => {
       const { ctx, w, h } = stage;
@@ -67,7 +96,7 @@ export function GrainMorph() {
       const oy = (h - size) / 2;
 
       const span = states.length - 1;
-      const scaled = clamp01(progress.current) * span;
+      const scaled = clamp01(progress) * span;
       const index = Math.min(Math.floor(scaled), span - 1);
       const local = scaled - index;
       const from = states[index];
@@ -80,14 +109,14 @@ export function GrainMorph() {
         const py = lerp(from[i][1], to[i][1], t);
         const dx = to[i][0] - from[i][0];
         const dy = to[i][1] - from[i][1];
-        const moving = t > 0.03 && t < 0.97;
+        const isMoving = t > 0.03 && t < 0.97;
         const scale = sizes[i];
 
         drawGrain(
           ctx,
           ox + px * size,
           oy + py * size,
-          moving ? Math.atan2(dy, dx) : -0.32,
+          isMoving ? Math.atan2(dy, dx) : -0.32,
           2.45 * scale,
           0.95 * scale,
           golds[i] ? GRAIN_PALETTE.gold : GRAIN_PALETTE.forest,
@@ -95,83 +124,56 @@ export function GrainMorph() {
         );
       }
 
-      const nearest = Math.round(clamp01(progress.current) * span);
-      if (nearest !== lastLabel && labelRef.current) {
-        lastLabel = nearest;
-        labelRef.current.textContent = `${String(nearest + 1).padStart(2, "0")} · ${STATE_LABELS[nearest]}`;
+      const nearest = Math.round(clamp01(progress) * span);
+      if (nearest !== lastState) {
+        lastState = nearest;
+        stateTarget.dataset.morphState = String(nearest);
+        if (labelRef.current) {
+          labelRef.current.textContent = `${String(nearest + 1).padStart(2, "0")} · ${STATE_LABELS[nearest]}`;
+        }
       }
     };
 
-    const loop = () => {
-      paint();
-      raf = requestAnimationFrame(loop);
-    };
+    const { stage, destroy } = mountCanvas(canvas, () => paint());
 
     if (reducedMotionNow()) {
-      progress.current = 1;
+      progress = 1;
       paint();
       return () => destroy();
     }
 
-    const context = gsap.context(() => {
-      const proxy = { value: 0 };
-      gsap.to(proxy, {
-        value: 1,
-        ease: "none",
-        onUpdate: () => {
-          progress.current = proxy.value;
-        },
-        scrollTrigger: {
-          trigger: wrap,
-          // The last state is the payoff, so the sequence has to finish while
-          // the panel is still well inside the viewport — not as it leaves.
-          start: "top 92%",
-          end: "bottom 62%",
-          scrub: 0.9,
-        },
-      });
-
-      // Only burn frames while the panel is actually on screen.
-      ScrollTrigger.create({
-        trigger: wrap,
-        start: "top bottom",
-        end: "bottom top",
-        onToggle: (self) => {
-          if (self.isActive && !running) {
-            running = true;
-            raf = requestAnimationFrame(loop);
-          } else if (!self.isActive && running) {
-            running = false;
-            cancelAnimationFrame(raf);
-          }
-        },
-      });
-    }, wrap);
-
-    paint();
+    const stopTracking = trackScrollProgress(
+      driver,
+      (next) => {
+        progress = next;
+        paint();
+      },
+      { ...activeRange, smoothing: SCRUB_SMOOTHING },
+    );
 
     return () => {
-      cancelAnimationFrame(raf);
-      context.revert();
+      stopTracking();
       destroy();
     };
-  }, []);
+  }, [driverSelector, pinnedMedia, start, end]);
 
   return (
-    /* Capped so the square canvas doesn't become a 700px-tall block on a
-       phone; on desktop the column is narrower than the cap anyway. */
-    <figure ref={wrapRef} className="relative m-0 w-full max-w-[30rem]">
+    /* Capped by default so the square canvas doesn't become a 700px-tall block
+       on a phone; story layouts pass their own sizing. */
+    <figure ref={wrapRef} className={`relative m-0 w-full ${className}`}>
       <canvas
         ref={canvasRef}
         aria-hidden="true"
         className="block aspect-square w-full"
       />
-      <figcaption className="hairline mt-4 flex items-baseline justify-between gap-4 pt-3">
-        <span ref={labelRef} className="t-meta text-gold">
-          01 · In the field
-        </span>
-        <span className="t-meta text-muted">Telangana → Doha</span>
-      </figcaption>
+      {showCaption ? (
+        <figcaption className="hairline mt-4 flex items-baseline justify-between gap-4 pt-3">
+          <span ref={labelRef} className="t-meta text-gold">
+            01 · In the field
+          </span>
+          <span className="t-meta text-muted">Telangana → Doha</span>
+        </figcaption>
+      ) : null}
     </figure>
   );
 }

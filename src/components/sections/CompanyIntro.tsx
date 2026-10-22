@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TradeBoard } from "@/components/motion/TradeBoard";
+import { LazyTradeBoard } from "@/components/lazy/home";
 import { Reveal } from "@/components/motion/Reveal";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { company } from "@/content/company";
@@ -58,7 +58,7 @@ export function CompanyIntro() {
           {/* The packs are the products page's job; here the range is stated
               the way the trade states it — grade and weight on a freight
               board. */}
-          <TradeBoard />
+          <LazyTradeBoard />
 
           <Reveal stagger as="dl" className="mt-10 grid gap-8 sm:grid-cols-2">
             <div className="hairline pt-5">

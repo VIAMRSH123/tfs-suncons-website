@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { resolveItems, type EnquiryItem } from "@/lib/enquiry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +27,17 @@ const enquirySchema = z.object({
    * rejecting it in the schema would hand bots a 422 to learn from.
    */
   website: z.string().max(400).optional(),
+  /** The enquiry basket. Names are ignored — the catalogue's own names are used. */
+  items: z
+    .array(
+      z.object({
+        slug: z.string().regex(/^[a-z0-9-]{1,80}$/),
+        packSize: z.string().trim().max(20).default(""),
+        quantity: z.number().int().min(1).max(100_000),
+      }),
+    )
+    .max(50)
+    .default([]),
 });
 
 export type EnquiryInput = z.infer<typeof enquirySchema>;
@@ -51,7 +63,10 @@ function clientKey(request: Request): string {
   return forwarded?.split(",")[0]?.trim() || "unknown";
 }
 
-async function deliver(enquiry: EnquiryInput): Promise<"sent" | "unconfigured"> {
+async function deliver(
+  enquiry: EnquiryInput,
+  items: EnquiryItem[],
+): Promise<"sent" | "unconfigured"> {
   const webhookUrl = process.env.ENQUIRY_WEBHOOK_URL;
   const resendKey = process.env.RESEND_API_KEY;
   const to = process.env.ENQUIRY_TO_EMAIL;
@@ -67,7 +82,7 @@ async function deliver(enquiry: EnquiryInput): Promise<"sent" | "unconfigured"> 
           ? { authorization: `Bearer ${process.env.ENQUIRY_WEBHOOK_TOKEN}` }
           : {}),
       },
-      body: JSON.stringify({ source: "website", ...enquiry }),
+      body: JSON.stringify({ source: "website", ...enquiry, items }),
     });
     if (!response.ok) {
       throw new Error(`Webhook responded ${response.status}`);
@@ -85,6 +100,9 @@ async function deliver(enquiry: EnquiryInput): Promise<"sent" | "unconfigured"> 
       `Country: ${enquiry.country || "—"}`,
       `Business type: ${enquiry.businessType}`,
       `Interested in: ${enquiry.interest}`,
+      ...(items.length > 0
+        ? ["", "Basket:", ...items.map((item) => `  ${item.quantity} × ${item.name}${item.packSize ? ` (${item.packSize})` : ""}`)]
+        : []),
       "",
       enquiry.message,
     ].join("\n");
@@ -141,8 +159,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  const items = resolveItems(parsed.data.items);
+  if (!items) {
+    return NextResponse.json(
+      { ok: false, code: "invalid", issues: { items: ["Unknown product or pack size"] } },
+      { status: 422 },
+    );
+  }
+
   try {
-    const result = await deliver(parsed.data);
+    const result = await deliver(parsed.data, items);
     if (result === "unconfigured") {
       return NextResponse.json(
         { ok: false, code: "not_configured" },

@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef } from "react";
-import {
-  gsap,
-  isTouchDevice,
-  reducedMotionNow,
-  useIsomorphicLayoutEffect,
-} from "@/lib/motion";
+import { useEffect, useRef } from "react";
+import { createFollower } from "@/lib/follow";
+import { isTouchDevice, reducedMotionNow } from "@/lib/motion";
+
+/** Per-frame smoothing: the dot tracks almost exactly, the ring trails. */
+const DOT_SMOOTHING = 0.55;
+const RING_SMOOTHING = 0.2;
+
+const INTERACTIVE = "[data-cursor-label], a, button, input, textarea, select, [role='button']";
 
 /**
  * Dot + ring cursor with contextual labels.
@@ -16,63 +18,61 @@ import {
  *  · `pointer-events: none` throughout, so links, buttons, text selection and
  *    form controls behave exactly as they would without it
  *  · the real cursor is only hidden once this one is actually running
- *  · driven by gsap.quickTo on refs — no React state per pointer move
+ *  · position is written to refs on animation frames — no React state per move;
+ *    hover and label states are data attributes the CSS transitions between
  *
- * Opt an element in with `data-cursor-label="VIEW"` or `data-cursor="hover"`.
+ * Opt an element in with `data-cursor-label="VIEW"`.
  */
 export function CustomCursor() {
+  const rootRef = useRef<HTMLDivElement>(null);
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
 
-  useIsomorphicLayoutEffect(() => {
+  useEffect(() => {
+    const root = rootRef.current;
     const dot = dotRef.current;
     const ring = ringRef.current;
     const label = labelRef.current;
-    if (!dot || !ring || !label) return;
+    if (!root || !dot || !ring || !label) return;
     if (isTouchDevice() || reducedMotionNow()) return;
 
     document.documentElement.classList.add("has-custom-cursor");
-    gsap.set([dot, ring], { opacity: 0, xPercent: -50, yPercent: -50 });
 
-    const dotX = gsap.quickTo(dot, "x", { duration: 0.12, ease: "power3.out" });
-    const dotY = gsap.quickTo(dot, "y", { duration: 0.12, ease: "power3.out" });
-    const ringX = gsap.quickTo(ring, "x", { duration: 0.42, ease: "power3.out" });
-    const ringY = gsap.quickTo(ring, "y", { duration: 0.42, ease: "power3.out" });
+    const dotFollow = createFollower((x, y) => {
+      dot.style.translate = `${x}px ${y}px`;
+    }, DOT_SMOOTHING);
+    const ringFollow = createFollower((x, y) => {
+      ring.style.translate = `${x}px ${y}px`;
+    }, RING_SMOOTHING);
 
-    let visible = false;
+    let isVisible = false;
 
     const handleMove = (event: PointerEvent) => {
-      if (!visible) {
-        visible = true;
-        gsap.to([dot, ring], { opacity: 1, duration: 0.3 });
+      if (!isVisible) {
+        isVisible = true;
+        dotFollow.jump(event.clientX, event.clientY);
+        ringFollow.jump(event.clientX, event.clientY);
+        root.dataset.visible = "true";
       }
-      dotX(event.clientX);
-      dotY(event.clientY);
-      ringX(event.clientX);
-      ringY(event.clientY);
+      dotFollow.to(event.clientX, event.clientY);
+      ringFollow.to(event.clientX, event.clientY);
     };
 
     const handleLeave = () => {
-      visible = false;
-      gsap.to([dot, ring], { opacity: 0, duration: 0.2 });
+      isVisible = false;
+      root.dataset.visible = "false";
     };
 
     const handleOver = (event: PointerEvent) => {
-      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(
-        "[data-cursor-label], a, button, input, textarea, select, [role='button']",
-      );
-
+      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(INTERACTIVE);
       const text = target?.dataset.cursorLabel;
       if (text) {
         label.textContent = text;
-        gsap.to(ring, { scale: 2.6, borderWidth: 1, duration: 0.4 });
-        gsap.to(label, { opacity: 1, duration: 0.3 });
+        root.dataset.state = "label";
         return;
       }
-
-      gsap.to(ring, { scale: target ? 1.7 : 1, duration: 0.4 });
-      gsap.to(label, { opacity: 0, duration: 0.2 });
+      root.dataset.state = target ? "hover" : "idle";
     };
 
     window.addEventListener("pointermove", handleMove, { passive: true });
@@ -84,25 +84,23 @@ export function CustomCursor() {
       window.removeEventListener("pointerover", handleOver);
       document.removeEventListener("pointerleave", handleLeave);
       document.documentElement.classList.remove("has-custom-cursor");
-      gsap.killTweensOf([dot, ring, label]);
+      dotFollow.stop();
+      ringFollow.stop();
     };
   }, []);
 
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[100] hidden md:block">
-      <div
-        ref={ringRef}
-        className="absolute left-0 top-0 h-9 w-9 rounded-full border border-forest/40 opacity-0 mix-blend-multiply"
-      >
-        <span
-          ref={labelRef}
-          className="t-meta absolute inset-0 flex scale-[0.4] items-center justify-center text-[8px] tracking-[0.1em] text-forest opacity-0"
-        />
+    <div
+      ref={rootRef}
+      aria-hidden="true"
+      data-visible="false"
+      data-state="idle"
+      className="custom-cursor pointer-events-none fixed inset-0 z-[100] hidden md:block"
+    >
+      <div ref={ringRef} className="custom-cursor__ring">
+        <span ref={labelRef} className="custom-cursor__label t-meta" />
       </div>
-      <div
-        ref={dotRef}
-        className="absolute left-0 top-0 h-1.5 w-1.5 rounded-full bg-forest opacity-0"
-      />
+      <div ref={dotRef} className="custom-cursor__dot" />
     </div>
   );
 }

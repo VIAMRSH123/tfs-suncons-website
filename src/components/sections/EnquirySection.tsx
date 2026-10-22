@@ -1,6 +1,8 @@
 "use client";
 
 import { useId, useState } from "react";
+import { BasketLines } from "@/components/enquiry/BasketLines";
+import { basketActions, useBasket } from "@/components/enquiry/basketStore";
 import { MagneticButton } from "@/components/motion/MagneticButton";
 import { Reveal } from "@/components/motion/Reveal";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -33,14 +35,17 @@ const errorMessages: Record<string, string> = {
   delivery_failed: "We couldn't deliver that just now.",
 };
 
-export function EnquirySection() {
+export function EnquirySection({ index = "09" }: { index?: string }) {
   const formId = useId();
+  const basket = useBasket();
   const [status, setStatus] = useState<Status>({ state: "idle" });
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
+    // The server re-checks every line against the catalogue; names are not sent.
+    const items = basket.map(({ slug, packSize, quantity }) => ({ slug, packSize, quantity }));
 
     setStatus({ state: "submitting" });
 
@@ -48,13 +53,14 @@ export function EnquirySection() {
       const response = await fetch("/api/enquiry", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, items }),
       });
       const body = (await response.json()) as { ok: boolean; code?: string };
 
       if (response.ok && body.ok) {
         setStatus({ state: "sent" });
         form.reset();
+        basketActions.clear();
         return;
       }
 
@@ -82,7 +88,7 @@ export function EnquirySection() {
       <div className="shell grid gap-14 md:grid-cols-12 md:gap-10">
         <div className="md:col-span-5">
           <SectionHeading
-            index="08"
+            index={index}
             label="Partnerships"
             id="enquiry-heading"
             lines={["Let's build", "a dependable", "supply line."]}
@@ -244,6 +250,13 @@ export function EnquirySection() {
                   autoComplete="country-name"
                   className={`${fieldClass} mt-2`}
                 />
+              </div>
+
+              <div className="hairline pt-5">
+                <p className="t-meta text-muted">Products in this enquiry</p>
+                <div className="mt-2">
+                  <BasketLines emptyHint="Nothing added yet. Use “+ Add to enquiry” on any product, or simply describe what you need below." />
+                </div>
               </div>
 
               <div>

@@ -10,8 +10,14 @@ export const GRAIN_PALETTE = {
 export type Stage = { ctx: CanvasRenderingContext2D; w: number; h: number };
 export type Point = [number, number];
 
-/** DPR-aware canvas sizing that re-fits on resize. */
-export function mountCanvas(canvas: HTMLCanvasElement): {
+/**
+ * DPR-aware canvas sizing that re-fits on resize. Re-fitting clears the
+ * canvas, so callers that paint on demand pass `onFit` to repaint.
+ */
+export function mountCanvas(
+  canvas: HTMLCanvasElement,
+  onFit?: () => void,
+): {
   stage: Stage;
   destroy: () => void;
 } {
@@ -30,8 +36,13 @@ export function mountCanvas(canvas: HTMLCanvasElement): {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
 
+  // The first fit happens before the caller has its stage, so only later
+  // re-fits (which clear the canvas) ask for a repaint.
   fit();
-  const observer = new ResizeObserver(fit);
+  const observer = new ResizeObserver(() => {
+    fit();
+    onFit?.();
+  });
   observer.observe(canvas);
 
   return { stage, destroy: () => observer.disconnect() };
