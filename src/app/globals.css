@@ -2,6 +2,8 @@
 @import "../styles/motion.css";
 @import "../styles/surfaces.css";
 @import "../styles/sections.css";
+@import "../styles/journey.css";
+@import "../styles/journey-tilt.css";
 
 /* ───────────────────────────────────────────────────────────────────────────
    Design tokens — "The 91 Standard"

@@ -1,0 +1,33 @@
+/* ─── Journey tilt ─────────────────────────────────────────────────────────────
+   The diorama tips a few degrees toward the pointer, the way a tabletop model
+   would (usePointerTilt in components/journey). The hook writes the whole
+   transform inline on animation frames — perspective, a lean of a few pixels,
+   then rotateX/rotateY about the centre — and clears it at rest, so this file
+   only places the layer and says where it may move. It sits between
+   .journey-viewport and .journey-camera with no layout of its own: the camera
+   keeps its own transform, and the veil stays outside, untilted.
+   ─────────────────────────────────────────────────────────────────────────── */
+.journey-tilt {
+  /* Perspective goes inside the transform (the viewport is not this layer's to
+     give a `perspective`) and scales with the stage, at 1.6× its longer side,
+     so 3° reads the same on a laptop as on a 27-inch screen. cq units resolve
+     against .journey-viewport, the size container. */
+  --tilt-perspective: 160cqmax;
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+
+/* Promote the layer only where the pointer tilt can run. Phones that drive it
+   by attitude are promoted by the 3D transform itself, and only while it moves. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .journey-tilt {
+    will-change: transform;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-tilt {
+    transform: none !important;
+  }
+}

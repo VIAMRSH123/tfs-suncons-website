@@ -1,0 +1,511 @@
+/* ─── Journey hero ─────────────────────────────────────────────────────────────
+   One isometric world, field to Doha (components/journey), told by the scroll:
+   desktop pins the hero for a scroll story, phones hold the stage under the
+   header. Each frame JourneyStage writes one translate on the camera plus the
+   rail's bars and the gold cargo — never a CSS variable on the world's subtree.
+   The scroll heights are CSS only, under .js-motion and a motion query, so
+   nothing jumps when scripts load; reduced motion and no-JS keep a still world
+   and a stepper (the <noscript> rule in the layout undoes the heights).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Phones: the copy, then a framed stage, then the caption and the rail. */
+.journey-copy {
+  position: relative;
+  z-index: 10;
+  padding-top: 6.5rem;
+}
+
+.journey-copy__inner {
+  max-width: 35rem;
+}
+
+.journey-stage {
+  position: relative;
+  margin-top: 2.25rem;
+}
+
+.journey-viewport {
+  position: relative;
+  height: min(112vw, 34rem);
+  overflow: hidden;
+  container-type: size;
+}
+
+.journey-hud {
+  position: relative;
+  z-index: 10;
+}
+
+/* The world only fades in: a transform here would sit over the phones' sticky panel. */
+.js-motion .journey-arrive[data-arrive] {
+  animation-name: journey-fade-in;
+}
+
+@keyframes journey-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Desktop: the world fills the hero and the copy sits over its ivory edge. */
+@media (min-width: 768px) {
+  .journey-frame {
+    position: relative;
+    height: 100svh;
+    min-height: 40rem;
+    max-height: 68rem;
+  }
+
+  .journey-copy {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 0 7rem;
+    pointer-events: none;
+  }
+
+  /* A soft ivory halo behind the copy keeps it legible over any chapter
+     without veiling half the world on smaller laptops. */
+  .journey-copy__inner {
+    position: relative;
+    isolation: isolate;
+    pointer-events: auto;
+  }
+
+  .journey-copy__inner::before {
+    content: "";
+    position: absolute;
+    inset: -3.5rem -6rem -3.5rem -4rem;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(
+      farthest-side at 42% 50%,
+      var(--color-ivory) 70%,
+      color-mix(in oklab, var(--color-ivory) 0%, transparent) 100%
+    );
+  }
+
+  .journey-arrive,
+  .journey-stage,
+  .journey-stage__panel {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+  }
+
+  .journey-viewport {
+    position: absolute;
+    inset: 0;
+    height: auto;
+  }
+
+  .journey-hud {
+    position: absolute;
+    inset: auto 0 0;
+  }
+}
+
+/* ─── Scroll story ─────────────────────────────────────────────────────────────
+   Desktop: the frame sticks inside a 300svh section — 200svh of travel, field
+   to Doha. Phones: the stage's panel holds under the 72px header, filling the
+   screen below it, for a shorter 150svh run (the ::after is the runway); the
+   world takes whatever height the caption and the rail leave. Plain sticky
+   scrolling throughout — nothing snaps and nothing holds the page. */
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .js-motion .journey-hero {
+    height: 300svh;
+  }
+
+  .js-motion .journey-frame {
+    position: sticky;
+    top: 0;
+    max-height: none;
+  }
+}
+
+@media (width < 768px) and (prefers-reduced-motion: no-preference) {
+  .js-motion .journey-stage::after {
+    content: "";
+    display: block;
+    height: 150svh;
+  }
+
+  .js-motion .journey-stage__panel {
+    position: sticky;
+    top: 72px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100svh - 72px);
+  }
+
+  .js-motion .journey-viewport {
+    flex: 1 1 auto;
+    min-height: 12rem;
+  }
+}
+
+/* ─── Camera ───────────────────────────────────────────────────────────────────
+   --cx/--cy (a chapter's focus, in world pixels) come from JourneyStage; the
+   focus lands at --focus-x/--focus-y of the viewport. That is the first paint
+   and the stepper; driven by the scroll, JourneyStage reads this framing (on
+   start and on resize) and writes the translate inline instead. */
+.journey-camera {
+  --scale: 0.5;
+  --focus-x: 50cqw;
+  --focus-y: 52cqh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(var(--world-w) * var(--scale) * 1px);
+  height: calc(var(--world-h) * var(--scale) * 1px);
+  transform: translate3d(
+    calc(var(--focus-x) - var(--cx) * var(--scale) * 1px),
+    calc(var(--focus-y) - var(--cy) * var(--scale) * 1px),
+    0
+  );
+  will-change: transform;
+}
+
+.journey-world {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Desktop focus sits in the open area: right of the copy, above the caption. */
+@media (min-width: 768px) {
+  .journey-camera {
+    --scale: 0.72;
+    --focus-x: 72cqw;
+    --focus-y: 38cqh;
+  }
+}
+
+@media (min-width: 1280px) {
+  .journey-camera {
+    --scale: 0.88;
+    --focus-x: 70cqw;
+    --focus-y: 40cqh;
+  }
+}
+
+@media (min-width: 1600px) {
+  .journey-camera {
+    --scale: 1;
+  }
+}
+
+@media (min-width: 768px) and (max-height: 760px) {
+  .journey-camera {
+    --scale: 0.7;
+  }
+}
+
+/* Ivory fades where the world meets the copy, the header and the rail. */
+.journey-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, var(--color-ivory), color-mix(in oklab, var(--color-ivory) 0%, transparent) 2.5rem),
+    linear-gradient(0deg, var(--color-ivory), color-mix(in oklab, var(--color-ivory) 0%, transparent) 2.5rem);
+}
+
+@media (min-width: 768px) {
+  .journey-veil {
+    background:
+      linear-gradient(
+        90deg,
+        var(--color-ivory) 0%,
+        color-mix(in oklab, var(--color-ivory) 94%, transparent) 26%,
+        color-mix(in oklab, var(--color-ivory) 0%, transparent) 52%
+      ),
+      linear-gradient(180deg, color-mix(in oklab, var(--color-ivory) 85%, transparent), color-mix(in oklab, var(--color-ivory) 0%, transparent) 8rem),
+      linear-gradient(0deg, var(--color-ivory), color-mix(in oklab, var(--color-ivory) 0%, transparent) 13rem);
+  }
+}
+
+/* Portrait tablets: beside the copy there is too little room, so the copy
+   takes the top of the screen and the world plays out below it. */
+@media (min-width: 768px) and (max-aspect-ratio: 4/5) {
+  .journey-copy {
+    align-items: flex-start;
+    padding: 8rem 0 0;
+  }
+
+  .journey-camera {
+    --focus-x: 56cqw;
+    --focus-y: 64cqh;
+  }
+
+  .journey-veil {
+    background:
+      linear-gradient(
+        180deg,
+        var(--color-ivory) 0%,
+        color-mix(in oklab, var(--color-ivory) 92%, transparent) 34%,
+        color-mix(in oklab, var(--color-ivory) 0%, transparent) 50%
+      ),
+      linear-gradient(0deg, var(--color-ivory), color-mix(in oklab, var(--color-ivory) 0%, transparent) 13rem);
+  }
+}
+
+/* ─── Caption ──────────────────────────────────────────────────────────────────
+   All five cards share one grid cell; the outgoing one leaves fast, the new
+   one arrives just after it. */
+.journey-caption {
+  display: grid;
+  margin: 1.25rem var(--space-gutter) 0;
+}
+
+.journey-caption__card {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--color-paper);
+  border: 1px solid var(--color-sand);
+  box-shadow: 0 24px 48px -30px rgb(19 48 31 / 0.35);
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 6px;
+  transition:
+    opacity 160ms ease,
+    translate 160ms ease,
+    visibility 0s linear 160ms;
+}
+
+.journey-caption__card[data-active="true"] {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 0;
+  transition:
+    opacity 260ms var(--ease-out-expo) 120ms,
+    translate 260ms var(--ease-out-expo) 120ms,
+    visibility 0s;
+}
+
+@media (min-width: 768px) {
+  .journey-caption {
+    position: absolute;
+    right: var(--space-gutter);
+    bottom: calc(100% + 1rem);
+    width: 22rem;
+    margin: 0;
+  }
+}
+
+/* ─── Rail ─────────────────────────────────────────────────────────────────── */
+.journey-rail-bar {
+  padding-block: 1rem 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .journey-rail-bar {
+    border-top: 1px solid color-mix(in oklab, var(--color-forest) 12%, transparent);
+  }
+}
+
+.journey-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.journey-rail__button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding-top: 0.35rem;
+  color: var(--color-muted);
+  text-align: left;
+  transition:
+    color 150ms ease,
+    scale 160ms var(--ease-out-expo);
+}
+
+.journey-rail__button[aria-current="step"] {
+  color: var(--color-forest);
+}
+
+.journey-rail__button:active {
+  scale: 0.97;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .journey-rail__button:hover {
+    color: var(--color-forest);
+  }
+}
+
+.journey-rail__label {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .journey-rail__label {
+    display: inline;
+  }
+}
+
+.journey-rail__track {
+  position: relative;
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  background: var(--color-sand);
+}
+
+/* A progress bar, so it may grow from zero. Driven by the scroll, JourneyStage
+   scales each one as its chapter plays; in the stepper, chapters reached are full. */
+.journey-rail__fill {
+  position: absolute;
+  inset: 0;
+  background: var(--color-gold);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+
+.journey-rail__track:is([data-state="done"], [data-state="current"]) .journey-rail__fill {
+  transform: none;
+}
+
+/* ─── Motion in the world ──────────────────────────────────────────────────────
+   The scroll carries the gold cargo (JourneyStage); the route's dashes flow
+   toward Doha at a constant speed. The ambient traffic shares the cargo's one
+   lane, so it would drive through it: it stands in for the cargo, still, only
+   under reduced motion. Its loops (cruising linear, fading at each end of a
+   stretch) return if the first rule below goes. */
+@media (prefers-reduced-motion: no-preference) {
+  .journey-traffic {
+    display: none;
+  }
+}
+
+.journey-route {
+  fill: none;
+  stroke: var(--color-gold);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1 13;
+  opacity: 0.85;
+  animation: journey-route 1.4s linear infinite;
+}
+
+@keyframes journey-route {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+
+.journey-move {
+  animation: journey-run var(--run) linear var(--delay, 0s) infinite;
+}
+
+@keyframes journey-run {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy));
+    opacity: 0;
+  }
+}
+
+.journey-stage[data-on-screen="false"] :is(.journey-move, .journey-route) {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-cargo {
+    display: none;
+  }
+
+  .journey-move,
+  .journey-route {
+    animation: none !important;
+  }
+}
+
+/* ─── Materials ────────────────────────────────────────────────────────────────
+   Clay-like shading: the top lightest, the left (+y) face mid, the right (+x)
+   face darkest. Gold marks the cargo — the one thing in the world that is TFS's. */
+.jm-clay .t { fill: #fbf8f1; }
+.jm-clay .l { fill: #eee8db; }
+.jm-clay .r { fill: #ddd5c3; }
+.jm-concrete .t { fill: #ece6d8; }
+.jm-concrete .l { fill: #ddd6c5; }
+.jm-concrete .r { fill: #cdc5b1; }
+.jm-sand .t { fill: #e9e2d0; }
+.jm-sand .l { fill: #d9d0bb; }
+.jm-sand .r { fill: #c8bea5; }
+.jm-gold .t { fill: #efd7ad; }
+.jm-gold .l { fill: #dfbd88; }
+.jm-gold .r { fill: #c69e63; }
+.jm-wood .t { fill: #b48e5c; }
+.jm-wood .l { fill: #97733f; }
+.jm-wood .r { fill: #7c5c30; }
+.jm-forest .t { fill: #3b6b4f; }
+.jm-forest .l { fill: #24523b; }
+.jm-forest .r { fill: #183c2b; }
+.jm-leaf .t { fill: #8cc29a; }
+.jm-leaf .l { fill: #6aac7c; }
+.jm-leaf .r { fill: #4f9264; }
+.jm-leaf .b { fill: #3f7a52; }
+.jm-pine .t { fill: #5f9a74; }
+.jm-pine .l { fill: #44805b; }
+.jm-pine .r { fill: #336847; }
+.jm-pine .b { fill: #285638; }
+.jm-charcoal .t { fill: #545b56; }
+.jm-charcoal .l { fill: #3b413d; }
+.jm-charcoal .r { fill: #2a2f2c; }
+.jm-glass .t { fill: #b6cbbd; }
+.jm-glass .l { fill: #96b3a1; }
+.jm-glass .r { fill: #7b9a87; }
+
+.js-clay-a { stop-color: #f6f1e6; }
+.js-clay-b { stop-color: #e5ddcb; }
+.js-clay-c { stop-color: #d3c9b3; }
+.js-glass-a { stop-color: #bfd2c6; }
+.js-glass-b { stop-color: #98b5a3; }
+.js-glass-c { stop-color: #7a9986; }
+.js-gold-a { stop-color: #efd6aa; }
+.js-gold-b { stop-color: #dbb881; }
+.js-gold-c { stop-color: #c09760; }
+
+.jg-water,
+.jp-sea-2 { fill: #a6c5bb; }
+.jp-sea-1 { fill: #b0ccc3; }
+.jp-sea-3 { fill: #9dbdb2; }
+.jp-sea-4 { fill: #aac8be; }
+.jg-road { fill: #e3dccb; }
+.jg-yard { fill: #ece6d8; }
+.jg-quay { fill: #e6e0d1; }
+.jg-curb { fill: #cfc7b2; }
+.jg-paint { fill: #f8f5ee; }
+.jp-paddy-a { fill: #b3d09b; }
+.jp-paddy-b { fill: #9ec486; }
+.jp-ripe-a { fill: #d8d49d; }
+.jp-ripe-b { fill: #c9c489; }
+
+.j-shadow { fill: rgb(19 48 31 / 0.09); }
+.j-wake { fill: rgb(255 255 255 / 0.6); }
+.jw-left { fill: rgb(19 48 31 / 0.14); }
+.jw-right { fill: rgb(19 48 31 / 0.2); }
+.jdoor { fill: rgb(19 48 31 / 0.32); }
+.jglass { fill: #7d9b89; }
+.jwheel { fill: #262b28; }
+.jstripe { fill: #c69e63; }
+.jcable { stroke: #24523b; stroke-width: 1.5; }
+.jband { fill: none; stroke: rgb(255 255 255 / 0.45); stroke-width: 1.5; }
