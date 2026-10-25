@@ -17,3 +17,13 @@ export const LazyEnquiryTray = dynamic(
   () => import("@/components/enquiry/EnquiryTray").then((module) => module.EnquiryTray),
   { ssr: false },
 );
+
+/**
+ * The logo intro is the exception: it is server-rendered, so its curtain is in
+ * the HTML for the first paint, and only its choreography arrives in its own
+ * chunk once hydration starts. Until then the mark simply holds, as a
+ * preloader should.
+ */
+export const LazyLogoIntro = dynamic(() =>
+  import("@/components/intro/LogoIntro").then((module) => module.LogoIntro),
+);

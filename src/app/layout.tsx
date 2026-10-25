@@ -2,8 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { LazyCustomCursor, LazyEnquiryTray } from "@/components/lazy/chrome";
+import { LazyCustomCursor, LazyEnquiryTray, LazyLogoIntro } from "@/components/lazy/chrome";
 import { company } from "@/content/company";
+import { INTRO_BOOT_SCRIPT } from "@/lib/intro";
 import "./globals.css";
 
 /**
@@ -76,8 +77,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${inter.variable} js-motion`}>
+    // The intro's boot script marks <html> before hydration, so React must not object to that attribute.
+    <html lang="en" className={`${fraunces.variable} ${inter.variable} js-motion`} suppressHydrationWarning>
       <head>
+        {/* Before the first paint: decides whether the logo intro plays (lib/intro.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: INTRO_BOOT_SCRIPT }} />
         {/* Scroll-revealed elements start hidden. Without scripting nothing
             would ever reveal them, so turn the whole system off there. */}
         <noscript>
@@ -85,6 +89,7 @@ export default function RootLayout({
         </noscript>
       </head>
       <body className="antialiased">
+        <LazyLogoIntro />
         <LazyCustomCursor />
         <Header />
         <main id="main">{children}</main>
