@@ -3,17 +3,19 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { along, tenth } from "@/lib/iso";
-import { convoyAt, dwellProgress, journeyAt, resolveLength, topForProgress } from "@/lib/journey";
+import { cargoAt, dwellProgress, journeyAt, resolveLength, topForProgress } from "@/lib/journey";
 import { observeVisibility, reducedMotionNow, useIsomorphicLayoutEffect } from "@/lib/motion";
 import { trackScrollProgress, type ProgressRange } from "@/lib/scroll";
-import { CAMERA_STOPS, CARGO_LEGS, CHAPTERS, WORLD } from "./chapters";
+import { CAMERA_STOPS, CARGO, CHAPTERS, TIMELINE, WORLD } from "./chapters";
 import { usePointerTilt } from "./usePointerTilt";
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 /** Where the whole hero pins; narrower, the stage alone holds under the header. */
 const DESKTOP = "(min-width: 768px)";
-/** Per-frame catch-up toward the scroll position — a soft scrub. */
-const SCRUB_SMOOTHING = 0.14;
+/** Desktop windows too short to pin a full-screen frame step through the chapters instead (styles/journey.css). */
+const SHORT_DESKTOP = "(min-width: 768px) and (height < 35rem)";
+/** Catch-up toward the scroll position per 60 fps frame: a soft scrub that smooths fast flicks. */
+const SCRUB_SMOOTHING = 0.1;
 
 /** A media query as an external store, for useSyncExternalStore. */
 function mediaStore(query: string) {
@@ -29,7 +31,8 @@ function mediaStore(query: string) {
 
 const motionPreference = mediaStore(REDUCED_MOTION);
 const desktopLayout = mediaStore(DESKTOP);
-/** The server can answer neither: it renders motion allowed, and the layout is CSS's. */
+const shortDesktop = mediaStore(SHORT_DESKTOP);
+/** The server can answer none of these: it renders motion allowed, and the layout is CSS's. */
 const serverSnapshot = () => false;
 
 const chapterNumber = (index: number) => String(index + 1).padStart(2, "0");
@@ -54,14 +57,22 @@ function styleWriter(element: HTMLElement | SVGElement, property: "transform" | 
 
 type Framing = { scale: number; focusX: number; focusY: number };
 
-/** The camera's framing, which CSS sets per breakpoint: its scale and where in the viewport the focus lands. */
+/**
+ * The camera's framing, which CSS sets per breakpoint: its scale and where in the viewport the
+ * focus lands. The viewport's layout box, not its rect, so a transform on it (the intro's settle)
+ * leaves the framing alone — container units resolve against the layout box too.
+ */
 function readFraming(camera: HTMLElement, viewport: HTMLElement): Framing {
   const style = getComputedStyle(camera);
-  const { width, height } = viewport.getBoundingClientRect();
+  const width = viewport.clientWidth;
+  const height = viewport.clientHeight;
+  const focusX = resolveLength(style.getPropertyValue("--focus-x"), width);
+  const focusY = resolveLength(style.getPropertyValue("--focus-y"), height);
   return {
     scale: Number.parseFloat(style.getPropertyValue("--scale")) || 1,
-    focusX: resolveLength(style.getPropertyValue("--focus-x"), width),
-    focusY: resolveLength(style.getPropertyValue("--focus-y"), height),
+    // journey.css keeps the focus in px, % or cq units; anything else falls back to the centre.
+    focusX: Number.isFinite(focusX) ? focusX : width / 2,
+    focusY: Number.isFinite(focusY) ? focusY : height / 2,
   };
 }
 
@@ -75,22 +86,22 @@ function framePainter(root: HTMLElement, camera: HTMLElement) {
   const scaleBars = Array.from(root.querySelectorAll<HTMLElement>(".journey-rail__fill"), (bar) =>
     styleWriter(bar, "transform"),
   );
-  const vehicles = CARGO_LEGS.map(({ id }) => {
+  const vehicles = CARGO.map(({ id, route }) => {
     const group = root.querySelector<SVGGElement>(`[data-cargo="${id}"]`);
-    return group && { move: styleWriter(group, "transform"), fade: styleWriter(group, "opacity") };
+    return group && { drawnAt: route[0][1], move: styleWriter(group, "transform"), fade: styleWriter(group, "opacity") };
   });
 
   return (progress: number, { scale, focusX, focusY }: Framing): number => {
-    const { chapter, x, y, chapterProgress } = journeyAt(progress, CAMERA_STOPS);
+    const { chapter, x, y, chapterProgress } = journeyAt(progress, TIMELINE);
     moveCamera(`translate3d(${tenth(focusX - x * scale)}px, ${tenth(focusY - y * scale)}px, 0)`);
     scaleBars.forEach((scaleBar, index) => {
       const full = index < chapter ? 1 : index > chapter ? 0 : chapterProgress;
       scaleBar(`scaleX(${thousandth(full)})`);
     });
-    convoyAt(progress, CARGO_LEGS, CHAPTERS.length).forEach(({ travelled, opacity }, index) => {
+    cargoAt(progress, CARGO, TIMELINE).forEach(({ x: routeX, opacity }, index) => {
       const vehicle = vehicles[index];
       if (!vehicle) return;
-      const [dx, dy] = along(travelled);
+      const [dx, dy] = along(routeX - vehicle.drawnAt);
       vehicle.move(`translate(${tenth(dx)}px, ${tenth(dy)}px)`);
       vehicle.fade(String(thousandth(opacity)));
     });
@@ -122,9 +133,11 @@ function driveByScroll({ root, panel, camera, viewport, onChapter }: ScrollDrive
   let framing = readFraming(camera, viewport);
   let progress = 0;
   let shown = -1;
+  let sticky: HTMLElement | null = null;
   let track: HTMLElement | null = null;
   let range: ProgressRange = { start: 0, end: 1 };
   let stopTracking = () => {};
+  let resizeFrame = 0;
 
   const render = (next: number) => {
     progress = next;
@@ -134,16 +147,31 @@ function driveByScroll({ root, panel, camera, viewport, onChapter }: ScrollDrive
     onChapter(chapter);
   };
 
+  // Progress reads 0 as the sticky element takes hold at its `top` and 1 as it
+  // lets go, when its track's bottom reaches the sticky element's own bottom.
+  // Both move with the viewport (the heights are in svh), so this is measured
+  // again after every resize — a phone's toolbar hiding, the phone turning.
+  const measureRange = () => {
+    const viewportHeight = window.innerHeight;
+    if (!sticky || !viewportHeight) return;
+    const top = Number.parseFloat(getComputedStyle(sticky).top) || 0;
+    range = { start: top / viewportHeight, end: (top + sticky.offsetHeight) / viewportHeight };
+  };
+
   const attach = () => {
     stopTracking();
-    const sticky = desktop.matches ? root.closest<HTMLElement>(".journey-frame") : panel;
+    stopTracking = () => {};
+    sticky = desktop.matches ? root.closest<HTMLElement>(".journey-frame") : panel;
     track = sticky?.parentElement ?? null;
-    if (!sticky || !track) return;
-    // Progress reads 0 as the sticky element takes hold at its `top` and 1 as it lets go:
-    // it fills the viewport below that offset, so its track's bottom is then the viewport's.
-    range = { start: (Number.parseFloat(getComputedStyle(sticky).top) || 0) / window.innerHeight, end: 1 };
+    if (!track) return;
+    measureRange();
     framing = readFraming(camera, viewport);
-    stopTracking = trackScrollProgress(track, render, { ...range, smoothing: SCRUB_SMOOTHING });
+    stopTracking = trackScrollProgress(track, render, { ...range, getRange: () => range, smoothing: SCRUB_SMOOTHING });
+  };
+
+  const handleResize = () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(measureRange);
   };
 
   const reframe = new ResizeObserver(() => {
@@ -153,18 +181,21 @@ function driveByScroll({ root, panel, camera, viewport, onChapter }: ScrollDrive
 
   attach();
   desktop.addEventListener("change", attach);
+  window.addEventListener("resize", handleResize);
   reframe.observe(viewport);
 
   return {
     goTo(index) {
       if (!track) return;
       const { top, height } = track.getBoundingClientRect();
-      const target = topForProgress(dwellProgress(index, CHAPTERS.length), height, window.innerHeight, range);
+      const target = topForProgress(dwellProgress(index, TIMELINE), height, window.innerHeight, range);
       window.scrollTo({ top: window.scrollY + top - target, behavior: "smooth" });
     },
     stop() {
       stopTracking();
+      cancelAnimationFrame(resizeFrame);
       desktop.removeEventListener("change", attach);
+      window.removeEventListener("resize", handleResize);
       reframe.disconnect();
       camera.style.transform = "";
       root.querySelectorAll<HTMLElement>(".journey-rail__fill").forEach((fill) => {
@@ -183,9 +214,10 @@ type JourneyStageProps = {
  * Plays the journey: the camera over the world, the caption and the rail.
  * The world arrives as server-rendered children and never re-renders. With
  * motion allowed the visitor's scroll drives it (driveByScroll) and choosing a
- * chapter scrolls to it; with reduced motion it is a stepper — the rail
- * switches chapters instantly over a still world. Ambient loops pause when
- * the stage is off screen (`data-on-screen`, styles/journey.css).
+ * chapter scrolls to it; with reduced motion, or a desktop window too short to
+ * pin, it is a stepper — the rail switches chapters instantly over a still
+ * world. Ambient loops pause when the stage is off screen (`data-on-screen`,
+ * styles/journey.css).
  */
 export function JourneyStage({ children, pack }: JourneyStageProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -197,7 +229,8 @@ export function JourneyStage({ children, pack }: JourneyStageProps) {
   const goToRef = useRef<((index: number) => void) | null>(null);
   const isReduced = useSyncExternalStore(motionPreference.subscribe, motionPreference.read, serverSnapshot);
   const isDesktop = useSyncExternalStore(desktopLayout.subscribe, desktopLayout.read, serverSnapshot);
-  const isScrollDriven = !isReduced;
+  const isShortDesktop = useSyncExternalStore(shortDesktop.subscribe, shortDesktop.read, serverSnapshot);
+  const isScrollDriven = !isReduced && !isShortDesktop;
   const [active, setActive] = useState(0);
   const [isOnScreen, setIsOnScreen] = useState(true);
 
@@ -294,7 +327,8 @@ export function JourneyStage({ children, pack }: JourneyStageProps) {
                     >
                       <span className="flex items-baseline gap-2">
                         <span className="t-index text-[0.95rem]">{chapterNumber(index)}</span>
-                        <span className="journey-rail__label t-meta">{chapter.label}</span>
+                        {/* Out of sight on phones, but still the button's name for screen readers and voice control. */}
+                        <span className="journey-rail__label t-meta sr-only sm:not-sr-only">{chapter.label}</span>
                       </span>
                       <span
                         className="journey-rail__track"

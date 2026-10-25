@@ -290,7 +290,6 @@ export function IndiaPortScene({ layer }: SceneProps) {
   return (
     <>
       <ContainerYard stacks={PORT_FRONT} />
-      <Truck x={41.4} y={7.35} load="sand" />
       <Buoy x={53.5} y={7.9} />
       <Buoy x={59.5} y={7.9} />
     </>

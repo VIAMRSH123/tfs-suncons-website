@@ -1,5 +1,5 @@
 import type { ScreenPoint } from "@/lib/iso";
-import { cameraTarget, type Leg } from "@/lib/journey";
+import { buildTimeline, cameraTarget, type Beat, type CargoTrack } from "@/lib/journey";
 
 export type ChapterId = "field" | "mill" | "packed" | "port" | "doha";
 
@@ -65,23 +65,83 @@ export const CHAPTERS: readonly Chapter[] = [
   },
 ];
 
+/** Each chapter's stop: the camera's target with its focus point centred. */
 export const CAMERA_STOPS: readonly ScreenPoint[] = CHAPTERS.map(({ focus }) =>
   cameraTarget(focus[0], focus[1], WORLD.origin),
 );
 
-export type CargoLeg = Leg & {
+const [FIELD, MILL, PACKED, PORT, DOHA] = CAMERA_STOPS;
+
+/** Over the water off the Doha quay, where the camera rests as the ship docks, with the waiting van in view. */
+const DOHA_QUAY = cameraTarget(59, 5.2, WORLD.origin);
+
+/**
+ * The scroll story, beat by beat. Every chapter holds still long enough to
+ * read, then the camera glides on with the cargo. The sea crossing is the
+ * slowest glide: the camera sails with the ship, pauses as it docks, then
+ * follows the van into the city. Units are relative; the scroll length is
+ * set from their total (JourneyHero, styles/journey.css).
+ */
+export const BEATS: readonly Beat[] = [
+  { kind: "hold", chapter: 0, units: 0.8, camera: FIELD },
+  { kind: "glide", chapter: 0, units: 1.6, camera: MILL },
+  { kind: "hold", chapter: 1, units: 1.2, camera: MILL },
+  { kind: "glide", chapter: 1, units: 1.6, camera: PACKED },
+  { kind: "hold", chapter: 2, units: 1.2, camera: PACKED },
+  { kind: "glide", chapter: 2, units: 1.6, camera: PORT },
+  { kind: "hold", chapter: 3, units: 1.4, camera: PORT },
+  { kind: "glide", chapter: 3, units: 2.6, camera: DOHA_QUAY },
+  { kind: "hold", chapter: 3, units: 0.6, camera: DOHA_QUAY },
+  { kind: "glide", chapter: 3, units: 1.4, camera: DOHA },
+  { kind: "hold", chapter: 4, units: 1.6, camera: DOHA },
+];
+
+export const TIMELINE = buildTimeline(BEATS);
+
+export type Cargo = CargoTrack & {
   id: "road" | "sea" | "city";
-  /** The lane the vehicle keeps to, in world y. */
+  /** The lane the vehicle keeps to, in world y. Its route is world x: the truck's tail, the ship's stern, the van's tail. */
   y: number;
 };
 
 /**
- * The gold cargo's journey, one vehicle per leg, handing over at the quays: a
- * truck down the road from the field to the India quay over chapters 1–3, the
- * ship across the sea in chapter 4 (x is its stern), a van into Doha in 5.
+ * The gold cargo, relayed from vehicle to vehicle. Moments are beat indices
+ * (lib/journey). The truck drives with the camera and stops at the mill and
+ * the yard; at the India quay it hands the load to the docked ship and fades
+ * out. The ship crosses during the long glide, and the van, waiting on the
+ * Doha quay, drives it into the city.
  */
-export const CARGO_LEGS: readonly CargoLeg[] = [
-  { id: "road", from: 3, to: 42, y: 5.52, chapters: [0, 3] },
-  { id: "sea", from: 46.4, to: 57, y: 5, chapters: [3, 4] },
-  { id: "city", from: 67.4, to: 77, y: 5.6, chapters: [4, 5] },
+export const CARGO: readonly Cargo[] = [
+  {
+    id: "road",
+    y: 5.52,
+    route: [
+      [1, 3],
+      [2, 17.5],
+      [3, 17.5],
+      [4, 29.5],
+      [5, 29.5],
+      [6, 42],
+    ],
+    fade: [
+      [6.5, 1],
+      [7, 0],
+    ],
+  },
+  {
+    id: "sea",
+    y: 5,
+    route: [
+      [7, 46.4],
+      [8, 57],
+    ],
+  },
+  {
+    id: "city",
+    y: 5.6,
+    route: [
+      [9, 67.4],
+      [10, 77],
+    ],
+  },
 ];

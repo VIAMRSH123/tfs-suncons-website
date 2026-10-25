@@ -3,10 +3,14 @@ import { MagneticButton } from "@/components/motion/MagneticButton";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { company } from "@/content/company";
 import { getProduct } from "@/content/products";
+import { TIMELINE } from "./chapters";
 import { JourneyStage } from "./JourneyStage";
 import { JourneyWorld } from "./JourneyWorld";
 
 const delay = (seconds: number) => ({ "--reveal-delay": `${seconds}s` }) as CSSProperties;
+
+/** The scroll length follows the story's beats (styles/journey.css). */
+const storyLength = { "--journey-units": TIMELINE.units } as CSSProperties;
 
 /** The "Packed" chapter shows the real pack: the design direction keeps packs as photographs. */
 const pack = getProduct("rice", "91-telangana-gold");
@@ -23,7 +27,7 @@ const packImage = { src: pack.image, alt: pack.imageAlt };
  */
 export function JourneyHero() {
   return (
-    <section aria-labelledby="hero-heading" className="journey-hero relative overflow-clip bg-ivory">
+    <section aria-labelledby="hero-heading" className="journey-hero relative overflow-clip bg-ivory" style={storyLength}>
       <div className="journey-frame">
         <div className="journey-copy">
           <div className="shell">

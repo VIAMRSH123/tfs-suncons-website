@@ -29,6 +29,14 @@
   height: min(112vw, 34rem);
   overflow: hidden;
   container-type: size;
+  transition: scale 1400ms var(--ease-out-expo);
+}
+
+/* Under the logo intro's curtain the world waits slightly zoomed, and settles as the curtain
+   opens (styles/intro.css). JourneyStage measures the viewport's layout box, so this doesn't
+   move the camera. */
+html[data-intro]:not([data-intro="exit"]) .journey-viewport {
+  scale: 1.06;
 }
 
 .journey-hud {
@@ -107,19 +115,23 @@
 }
 
 /* ─── Scroll story ─────────────────────────────────────────────────────────────
-   Desktop: the frame sticks inside a 300svh section — 200svh of travel, field
-   to Doha. Phones: the stage's panel holds under the 72px header, filling the
-   screen below it, for a shorter 150svh run (the ::after is the runway); the
-   world takes whatever height the caption and the rail leave. Plain sticky
-   scrolling throughout — nothing snaps and nothing holds the page. */
-@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+   The story is a run of beats (BEATS in components/journey/chapters.ts);
+   JourneyHero sets --journey-units to their total. Desktop: the frame sticks,
+   exactly one screen tall, inside a section with 30svh of travel per unit.
+   Windows under 35rem tall don't pin — the rail steps instead (JourneyStage).
+   Phones: the stage's panel holds under the 72px header, filling the screen
+   below it, for 22svh per unit (the ::after is the runway); the world takes
+   whatever height the caption and the rail leave. Plain sticky scrolling
+   throughout — nothing snaps and nothing holds the page. */
+@media (min-width: 768px) and (min-height: 35rem) and (prefers-reduced-motion: no-preference) {
   .js-motion .journey-hero {
-    height: 300svh;
+    height: calc(100svh + var(--journey-units, 15) * 30svh);
   }
 
   .js-motion .journey-frame {
     position: sticky;
     top: 0;
+    min-height: 0;
     max-height: none;
   }
 }
@@ -128,7 +140,7 @@
   .js-motion .journey-stage::after {
     content: "";
     display: block;
-    height: 150svh;
+    height: calc(var(--journey-units, 15) * 22svh);
   }
 
   .js-motion .journey-stage__panel {
@@ -342,16 +354,6 @@
   }
 }
 
-.journey-rail__label {
-  display: none;
-}
-
-@media (min-width: 640px) {
-  .journey-rail__label {
-    display: inline;
-  }
-}
-
 .journey-rail__track {
   position: relative;
   display: block;
@@ -375,11 +377,13 @@
 }
 
 /* ─── Motion in the world ──────────────────────────────────────────────────────
-   The scroll carries the gold cargo (JourneyStage); the route's dashes flow
-   toward Doha at a constant speed. The ambient traffic shares the cargo's one
-   lane, so it would drive through it: it stands in for the cargo, still, only
-   under reduced motion. Its loops (cruising linear, fading at each end of a
-   stretch) return if the first rule below goes. */
+   Only the scroll moves anything: the camera and the gold cargo (JourneyStage).
+   The route stays still on purpose. Its dashes once flowed forever, and since
+   the line spans the whole world, every step repainted nearly all of it
+   (docs/11-journey-hero.md). The ambient traffic shares the cargo's one lane,
+   so it would drive through it: it stands in for the cargo, still, only under
+   reduced motion. Its loops (cruising linear, fading at each end of a stretch)
+   return if the first rule below goes; each repaints its own patch per frame. */
 @media (prefers-reduced-motion: no-preference) {
   .journey-traffic {
     display: none;
@@ -393,13 +397,6 @@
   stroke-linecap: round;
   stroke-dasharray: 1 13;
   opacity: 0.85;
-  animation: journey-route 1.4s linear infinite;
-}
-
-@keyframes journey-route {
-  to {
-    stroke-dashoffset: -14;
-  }
 }
 
 .journey-move {
@@ -423,7 +420,7 @@
   }
 }
 
-.journey-stage[data-on-screen="false"] :is(.journey-move, .journey-route) {
+.journey-stage[data-on-screen="false"] .journey-move {
   animation-play-state: paused;
 }
 
@@ -432,8 +429,7 @@
     display: none;
   }
 
-  .journey-move,
-  .journey-route {
+  .journey-move {
     animation: none !important;
   }
 }
