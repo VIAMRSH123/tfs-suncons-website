@@ -44,7 +44,7 @@ value work available: it turns a one-off manual pass into something that holds.
 - [x] **A1 — Install Playwright** and wire `test` / `test:e2e` scripts. Config should build and
       serve the production bundle (`next build && next start`), since most of what needs asserting
       is prerendered output and real headers. Keep it to one dependency.
-- [ ] **A2 — Legacy redirect tests.** `next.config.ts` defines 13 permanent redirects from the old
+- [x] **A2 — Legacy redirect tests.** `next.config.ts` defines 13 permanent redirects from the old
       WordPress URLs; handover §4 claims all return 308 to the correct target. Assert every one by
       reading the table from the config rather than hardcoding a second copy.
 - [ ] **A3 — Internal link crawl.** Handover §4 claims 25 unique internal links, 0 broken. Make it
@@ -146,3 +146,4 @@ commit as the work, so the sha isn't known yet — leave it out.
 
 2026-10-19 — A1 — test: add Playwright e2e runner against the production build
 2026-10-22 — C2, C3 — feat: redesign every page around one signature moment
+2026-10-29 — A2 — test: assert every legacy WordPress redirect is a 308 to a live page
