@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { Hero } from "@/components/sections/Hero";
+import { JourneyHero } from "@/components/journey/JourneyHero";
 import { CompanyIntro } from "@/components/sections/CompanyIntro";
 import { SpiceBand } from "@/components/sections/SpiceBand";
 import { Journey } from "@/components/sections/Journey";
@@ -48,7 +48,7 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
       />
-      <Hero />
+      <JourneyHero />
       <LazyManifestBand />
       <CompanyIntro />
       <LazyPackCloud />

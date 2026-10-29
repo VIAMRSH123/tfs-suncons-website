@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useBasket } from "@/components/enquiry/basketStore";
+import { isPlainClick, requestIntro } from "@/lib/intro";
 
 const navigation = [
   { href: "/products", label: "Products" },
@@ -57,13 +58,23 @@ export function Header() {
       </a>
 
       <div className="shell flex h-[72px] items-center justify-between gap-6">
-        <Link href="/" className="relative z-10 flex items-center" aria-label="TFS Suncons — home">
+        <Link
+          href="/"
+          className="relative z-10 flex items-center"
+          aria-label="TFS Suncons — home"
+          onClick={(event) => {
+            setIsMenuOpen(false);
+            // The logo intro takes the visitor home; modified clicks still open a new tab or window.
+            if (isPlainClick(event) && requestIntro()) event.preventDefault();
+          }}
+        >
           <Image
             src="/brand/tfs-logo-light.png"
             alt="TFS Suncons"
             width={496}
             height={296}
             priority
+            data-site-logo
             className="h-10 w-auto"
           />
         </Link>

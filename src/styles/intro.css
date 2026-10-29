@@ -1,0 +1,163 @@
+/* ─── Logo intro ───────────────────────────────────────────────────────────────
+   The first thing a visit sees: the mark draws itself on ivory — a gold rule,
+   the logo rising from it, a glint crossing the logo — then the curtain parts
+   along the rule while the logo flies up into the header (LogoIntro). It plays
+   again from the header's logo, on the way home. The first-load entrance is
+   CSS, so it starts at first paint, before any script; LogoIntro drives the
+   rest. Shown only while <html data-intro> is set (lib/intro.ts): without
+   scripts, with reduced motion or on a reload in the same tab, nothing shows.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.intro {
+  display: none;
+}
+
+html[data-intro] .intro {
+  --intro-ease: cubic-bezier(0.77, 0, 0.175, 1);
+  position: fixed;
+  inset: 0;
+  z-index: 90; /* over the header and the enquiry tray, under the custom cursor */
+  display: block;
+}
+
+/* While it covers the page, it takes the clicks the hidden page would get; as it opens, it lets them through. */
+html[data-intro="exit"] .intro {
+  pointer-events: none;
+}
+
+/* Two halves meet along the rule. Each carries half of one soft paper glow, so the seam never shows. */
+.intro__veil {
+  position: absolute;
+  inset-inline: 0;
+  height: 50.2%;
+  background: radial-gradient(ellipse 55% 42% at 50% 50%, #fbf8f1, var(--color-ivory)) no-repeat;
+  background-size: 100% 200%;
+  will-change: transform;
+}
+
+.intro__veil--top {
+  top: 0;
+  background-position: top;
+}
+
+.intro__veil--bottom {
+  bottom: 0;
+  background-position: bottom;
+}
+
+/* The rule sits exactly on the seam: equal rows above and below it. */
+.intro__stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 1fr auto 1fr;
+  justify-items: center;
+}
+
+/* The logo file carries wide transparent margins, so the box is larger than the mark it shows. */
+.intro__logo {
+  align-self: end;
+  width: clamp(13rem, 8rem + 16vw, 24rem);
+  margin-bottom: clamp(0.25rem, 0.6vw, 0.75rem);
+  will-change: transform;
+}
+
+.intro__rise {
+  position: relative;
+}
+
+/* The logo, and below its mask, are the same file as INTRO_LOGO (lib/intro.ts), which the boot script preloads. */
+.intro__image {
+  display: block;
+  aspect-ratio: 496 / 296;
+  background: url("/brand/tfs-logo-light.png") center / contain no-repeat;
+}
+
+/* A band of warm light, masked to the logo's own pixels, crossing it once. */
+.intro__glint {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  -webkit-mask: url("/brand/tfs-logo-light.png") center / 100% 100% no-repeat;
+  mask: url("/brand/tfs-logo-light.png") center / 100% 100% no-repeat;
+}
+
+.intro__shine {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgb(255 247 226 / 0.85), transparent);
+  transform: translateX(-130%);
+}
+
+.intro__rule {
+  display: block;
+  width: min(17rem, 62vw);
+  height: 1px;
+  background: var(--color-gold);
+}
+
+.intro__tagline {
+  align-self: start;
+  margin-top: 1.25rem;
+  color: var(--color-gold);
+}
+
+/* First load: the entrance, from first paint. The rule draws out from the centre,
+   the logo rises from it out of a soft blur, the glint crosses, the line settles. */
+html[data-intro-entry] .intro__rule {
+  animation: intro-rule 700ms var(--intro-ease) 120ms both;
+}
+
+html[data-intro-entry] .intro__rise {
+  animation: intro-rise 1000ms var(--ease-out-expo) 320ms both;
+}
+
+html[data-intro-entry] .intro__shine {
+  animation: intro-glint 800ms var(--ease-in-out-soft) 850ms both;
+}
+
+html[data-intro-entry] .intro__tagline {
+  animation: intro-tagline 600ms var(--ease-out-expo) 780ms both;
+}
+
+@keyframes intro-rule {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes intro-rise {
+  from {
+    clip-path: inset(100% 0 0 0);
+    transform: translateY(16px);
+    filter: blur(6px);
+    opacity: 0;
+  }
+}
+
+@keyframes intro-glint {
+  from {
+    transform: translateX(-130%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+
+@keyframes intro-tagline {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* The page loads and animates underneath exactly as it would without the intro — nothing waits,
+   so the largest contentful paint is never held back — and the curtain opens onto it composed.
+   Pages may react to the opening themselves (the journey's world settles: styles/journey.css). */
+
+/* The header's logo is where the intro's logo lands: hidden until the hand-over. */
+html[data-intro] [data-site-logo] {
+  opacity: 0;
+}
