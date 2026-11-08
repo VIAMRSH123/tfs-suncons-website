@@ -47,7 +47,7 @@ value work available: it turns a one-off manual pass into something that holds.
 - [x] **A2 — Legacy redirect tests.** `next.config.ts` defines 13 permanent redirects from the old
       WordPress URLs; handover §4 claims all return 308 to the correct target. Assert every one by
       reading the table from the config rather than hardcoding a second copy.
-- [ ] **A3 — Internal link crawl.** Handover §4 claims 25 unique internal links, 0 broken. Make it
+- [x] **A3 — Internal link crawl.** Handover §4 claims 25 unique internal links, 0 broken. Make it
       a test that crawls from `/` and fails on any non-200.
 - [ ] **A4 — No horizontal overflow** at 320 / 375 / 768 / 1024 / 1280 / 1920, asserted as
       `scrollWidth <= clientWidth` on `<html>`. Handover §4 verified these widths manually; the
@@ -147,3 +147,4 @@ commit as the work, so the sha isn't known yet — leave it out.
 2026-10-19 — A1 — test: add Playwright e2e runner against the production build
 2026-10-22 — C2, C3 — feat: redesign every page around one signature moment
 2026-10-29 — A2 — test: assert every legacy WordPress redirect is a 308 to a live page
+2026-11-08 — A3 — test: crawl internal links from / and require every sitemap page be reachable
