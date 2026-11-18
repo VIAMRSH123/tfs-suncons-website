@@ -49,7 +49,7 @@ value work available: it turns a one-off manual pass into something that holds.
       reading the table from the config rather than hardcoding a second copy.
 - [x] **A3 — Internal link crawl.** Handover §4 claims 25 unique internal links, 0 broken. Make it
       a test that crawls from `/` and fails on any non-200.
-- [ ] **A4 — No horizontal overflow** at 320 / 375 / 768 / 1024 / 1280 / 1920, asserted as
+- [x] **A4 — No horizontal overflow** at 320 / 375 / 768 / 1024 / 1280 / 1920, asserted as
       `scrollWidth <= clientWidth` on `<html>`. Handover §4 verified these widths manually; the
       project's own web testing rules require the same set.
 - [ ] **A5 — Enquiry API contract.** Four cases, all recorded as verified in §4 and all cheap to
@@ -148,3 +148,4 @@ commit as the work, so the sha isn't known yet — leave it out.
 2026-10-22 — C2, C3 — feat: redesign every page around one signature moment
 2026-10-29 — A2 — test: assert every legacy WordPress redirect is a 308 to a live page
 2026-11-08 — A3 — test: crawl internal links from / and require every sitemap page be reachable
+2026-11-18 — A4 — test: assert no horizontal overflow at the six required widths
