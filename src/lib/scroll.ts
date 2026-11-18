@@ -1,3 +1,5 @@
+import { step } from "./follow";
+
 /**
  * Scroll-linked progress without a scroll library.
  *
@@ -8,6 +10,8 @@
  */
 
 export type ProgressRange = { start: number; end: number };
+
+const FRAME_MS = 1000 / 60;
 
 export function clamp01(value: number): number {
   return value < 0 ? 0 : value > 1 ? 1 : value;
@@ -26,8 +30,10 @@ export function progressFromRect(
 }
 
 type TrackOptions = ProgressRange & {
-  /** 0–1 per frame; lower is smoother. 1 = no smoothing. */
+  /** 0–1 per 60 fps frame; lower is smoother. 1 = no smoothing. The same on any refresh rate. */
   smoothing?: number;
+  /** Reads the range afresh on every measure, for one that moves with the viewport; overrides `start` and `end`. */
+  getRange?: () => ProgressRange;
 };
 
 /**
@@ -38,24 +44,28 @@ type TrackOptions = ProgressRange & {
 export function trackScrollProgress(
   element: HTMLElement,
   onProgress: (progress: number) => void,
-  { start, end, smoothing = 1 }: TrackOptions,
+  { start, end, smoothing = 1, getRange }: TrackOptions,
 ): () => void {
   let target = 0;
   let current = -1;
   let frame = 0;
+  let last = 0;
 
   const measure = () => {
     const rect = element.getBoundingClientRect();
-    target = progressFromRect(rect.top, rect.height, window.innerHeight, { start, end });
+    target = progressFromRect(rect.top, rect.height, window.innerHeight, getRange ? getRange() : { start, end });
   };
 
-  const tick = () => {
+  const tick = (now: number) => {
     frame = 0;
+    const frames = last ? Math.min((now - last) / FRAME_MS, 4) : 1;
+    last = now;
     if (current < 0) current = target;
-    const next = current + (target - current) * smoothing;
+    const next = step(current, target, smoothing, frames);
     current = Math.abs(target - next) < 0.0005 ? target : next;
     onProgress(current);
     if (current !== target) frame = requestAnimationFrame(tick);
+    else last = 0;
   };
 
   const schedule = () => {
